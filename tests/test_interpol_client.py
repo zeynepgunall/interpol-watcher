@@ -1,15 +1,6 @@
+import httpx
+
 from fetcher.interpol_client import InterpolClient, RedNotice
-
-
-class DummyResponse:
-    def __init__(self, payload):
-        self._payload = payload
-
-    def raise_for_status(self):
-        return None
-
-    def json(self):
-        return self._payload
 
 
 def test_fetch_red_notices_parses_items(monkeypatch):
@@ -28,12 +19,13 @@ def test_fetch_red_notices_parses_items(monkeypatch):
         }
     }
 
-    def fake_get(url, params=None, timeout=20):  # noqa: D401, ARG001
-        return DummyResponse(payload)
+    captured = {}
 
-    import requests
+    def fake_send(self, request):  # noqa: ANN001
+        captured["url"] = str(request.url)
+        return httpx.Response(200, json=payload, request=request)
 
-    monkeypatch.setattr(requests, "get", fake_get)
+    monkeypatch.setattr(httpx.Client, "send", fake_send)
 
     client = InterpolClient("https://example.com")
     notices = client.fetch_red_notices()
@@ -44,4 +36,6 @@ def test_fetch_red_notices_parses_items(monkeypatch):
     assert notice.name == "DOE"
     assert notice.forename == "JOHN"
     assert notice.arrest_warrant == "Sample charge"
-
+    assert captured["url"] == (
+        "https://example.com/notices/v1/red?page=1&resultPerPage=20"
+    )
