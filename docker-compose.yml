@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: interpol_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+
+  fetcher:
+    build:
+      context: .
+      dockerfile: fetcher/Dockerfile
+    container_name: interpol_fetcher
+    depends_on:
+      - rabbitmq
+    environment:
+      INTERPOL_BASE_URL: ${INTERPOL_BASE_URL:-https://ws-public.interpol.int}
+      INTERPOL_FETCH_INTERVAL_SECONDS: ${INTERPOL_FETCH_INTERVAL_SECONDS:-300}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-interpol_red_notices}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: interpol_web
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8000:8000"
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-interpol_red_notices}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/notices.db}
+    volumes:
+      - web_data:/data
+
+volumes:
+  web_data:

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Interpol Red Notices</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #0f172a;
+        color: #e5e7eb;
+      }
+      header {
+        padding: 1.5rem 2rem;
+        background: #111827;
+        border-bottom: 1px solid #1f2937;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      header span {
+        font-size: 0.9rem;
+        color: #9ca3af;
+      }
+      main {
+        padding: 1.5rem 2rem 3rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #020617;
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+      thead {
+        background: #111827;
+      }
+      th, td {
+        padding: 0.75rem 0.75rem;
+        text-align: left;
+        font-size: 0.875rem;
+      }
+      th {
+        color: #9ca3af;
+        border-bottom: 1px solid #1f2937;
+      }
+      tbody tr:nth-child(even) {
+        background: #020617;
+      }
+      tbody tr:nth-child(odd) {
+        background: #020617;
+      }
+      tbody tr.updated {
+        background: #1f2937;
+      }
+      tbody tr.updated td {
+        border-top: 1px solid #b91c1c;
+        border-bottom: 1px solid #b91c1c;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+      }
+      .badge-updated {
+        background: #b91c1c;
+        color: #fee2e2;
+      }
+      .muted {
+        color: #6b7280;
+      }
+      .charge {
+        max-width: 260px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Interpol Kırmızı Bülten İzleyici</h1>
+        <span>Kuyruktan gelen veriler anlık olarak güncellenmektedir.</span>
+      </div>
+      <div class="muted">
+        Toplam son kayıtlar: {{ notices|length }}
+      </div>
+    </header>
+    <main>
+      <table>
+        <thead>
+          <tr>
+            <th>Alarm</th>
+            <th>Ad Soyad</th>
+            <th>Doğum Tarihi</th>
+            <th>Uyruğu</th>
+            <th>Suç / Arama Nedeni</th>
+            <th>Kayıt Zamanı</th>
+            <th>Güncelleme Zamanı</th>
+            <th>Entity ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for notice in notices %}
+          <tr class="{% if notice.is_updated %}updated{% endif %}">
+            <td>
+              {% if notice.is_updated %}
+                <span class="badge badge-updated">ALARM – Güncellendi</span>
+              {% else %}
+                <span class="muted">Yeni</span>
+              {% endif %}
+            </td>
+            <td>{{ notice.forename or "" }} {{ notice.name or "" }}</td>
+            <td>{{ notice.date_of_birth or "-" }}</td>
+            <td>{{ notice.nationality or "-" }}</td>
+            <td class="charge">{{ notice.arrest_warrant or "-" }}</td>
+            <td>{{ notice.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ notice.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td class="muted">{{ notice.entity_id }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="muted">
+              Henüz kayıt yok. Birkaç dakika içinde fetcher servisi Interpol'den verileri çekip kuyruğa yazmaya başlayacaktır.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </main>
+  </body>
+</html>
+
