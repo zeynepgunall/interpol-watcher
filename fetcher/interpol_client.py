@@ -3,7 +3,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, List, Dict, Any
 
-import requests
+import httpx
+
+
+DEFAULT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/123.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.interpol.int/",
+    "Origin": "https://www.interpol.int",
+}
 
 
 @dataclass
@@ -38,15 +51,27 @@ class InterpolClient:
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
+        self.client = httpx.Client(
+            http2=True,
+            headers=DEFAULT_HEADERS,
+            timeout=20.0,
+            follow_redirects=True,
+        )
 
-    def fetch_red_notices(self, result_per_page: int = 20) -> List[RedNotice]:
+    def fetch_red_notices(
+        self,
+        page: int = 1,
+        result_per_page: int = 20,
+    ) -> List[RedNotice]:
         url = f"{self.base_url}/notices/v1/red"
-        params = {"resultPerPage": result_per_page}
-        response = requests.get(url, params=params, timeout=20)
+        params = {"page": page, "resultPerPage": result_per_page}
+
+        request = self.client.build_request("GET", url, params=params)
+        response = self.client.send(request)
         response.raise_for_status()
+
         data = response.json()
         notices: Iterable[dict] = data.get("_embedded", {}).get(
             "notices", []
         )
         return [RedNotice.from_api_item(item) for item in notices]
-
