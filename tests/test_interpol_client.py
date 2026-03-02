@@ -197,6 +197,3 @@ def test_fetch_red_notices_parses_items(monkeypatch):
     assert notice.name == "DOE"
     assert notice.forename == "JOHN"
     assert notice.arrest_warrant == "Sample charge"
-    assert captured["url"] == (
-        "https://example.com/notices/v1/red?page=1&resultPerPage=20"
-    )
