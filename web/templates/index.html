@@ -96,7 +96,7 @@
     td.bold { color: #eee; font-weight: bold; }
     td.red  { color: #cc0000; font-weight: bold; font-size: 11px; }
     td.dim  { color: #555; font-size: 11px; }
-    td.charge { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    td.nats { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* EMPTY */
     #empty { text-align: center; padding: 60px 16px; color: #555; font-size: 12px; }
@@ -146,7 +146,7 @@
         <th>Name</th>
         <th>D.O.B.</th>
         <th>Nationality</th>
-        <th>Charge</th>
+        <th>All Nationalities</th>
         <th>Ref</th>
         <th>Added</th>
         <th>Status</th>
@@ -168,7 +168,7 @@
           <span class="flag" data-code="{{ notice.nationality }}"></span>{{ notice.nationality }}
         {% else %}&mdash;{% endif %}
       </td>
-      <td class="charge">{{ notice.arrest_warrant if notice.arrest_warrant else '&mdash;' }}</td>
+      <td class="nats">{{ notice.all_nationalities if notice.all_nationalities else '&mdash;' }}</td>
       <td class="dim">{{ notice.entity_id }}</td>
       <td class="dim">{{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else '&mdash;' }}</td>
       <td>
