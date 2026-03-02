@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="tr">
 <head>
   <meta charset="utf-8">
@@ -8,404 +8,334 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --paper:      #f5f0e8;
-      --paper-dark: #ede7d9;
-      --ink:        #1a1a18;
-      --ink-mid:    #4a4a44;
-      --ink-light:  #888880;
-      --rule:       #c8c0b0;
-      --rule-dark:  #a09880;
-      --wanted-red: #b01c1c;
-      --tab-bg:     #e8e0d0;
+      --bg:         #f0ede8;
+      --surface:    #ffffff;
+      --border:     #d4cfc8;
+      --border-mid: #b5afa6;
+      --ink:        #1c1c1a;
+      --ink-mid:    #4a4844;
+      --ink-soft:   #7a7872;
+      --red:        #b01c1c;
+      --red-faint:  rgba(176,28,28,0.08);
+      --mono:       "Courier New", Courier, monospace;
+      --serif:      Georgia, "Times New Roman", serif;
     }
 
     body {
-      font-family: Georgia, "Times New Roman", Times, serif;
-      background: #d9d2c5;
+      font-family: var(--serif);
+      background: var(--bg);
       color: var(--ink);
       min-height: 100vh;
+      font-size: 14px;
     }
 
-    /* ── PAGE SHELL ── */
-    .page-wrap {
-      max-width: 1540px;
-      margin: 0 auto;
-      padding: 0 1rem 4rem;
-    }
-
-    /* ── HEADER / COVER SHEET ── */
+    /* â”€â”€ HEADER â”€â”€ */
     header {
-      background: var(--paper-dark);
-      border-bottom: 3px double var(--rule-dark);
-      padding: 0.9rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
-    .header-top {
+    .header-row {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--rule);
-      padding-bottom: 0.7rem;
-      margin-bottom: 0.7rem;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
-    .org-block { line-height: 1.3; }
-    .org-block .org-name {
-      font-family: Georgia, serif;
-      font-size: 1.05rem;
+    .brand { display: flex; flex-direction: column; line-height: 1.3; }
+    .brand-name {
+      font-family: var(--mono);
+      font-size: 0.78rem;
       font-weight: bold;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--ink);
     }
-    .org-block .org-sub {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.7rem;
-      color: var(--ink-mid);
+    .brand-sub {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--ink-soft);
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
-    .doc-meta {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.7rem;
-      color: var(--ink-mid);
-      text-align: right;
-      line-height: 1.7;
-    }
-    .doc-meta strong { color: var(--ink); }
-
-    /* ── FILTER ROW ── */
-    .filter-row {
+    .header-meta {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.9rem;
       flex-wrap: wrap;
     }
-    .filter-label {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.7rem;
+    .meta-pill {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--ink-mid);
-      white-space: nowrap;
+      color: var(--ink-soft);
     }
-    .filter-row input[type=text],
-    .filter-row select {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.78rem;
-      background: var(--paper);
-      border: 1px solid var(--rule-dark);
+    .meta-pill strong { color: var(--ink); }
+    .meta-pill.alarm  { color: var(--red); font-weight: bold; }
+
+    /* â”€â”€ SEARCH BAR â”€â”€ */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-top: 0.55rem;
+      padding-top: 0.55rem;
+      border-top: 1px solid var(--border);
+    }
+    .search-bar input[type=text],
+    .search-bar select {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border-mid);
       border-radius: 3px;
       color: var(--ink);
-      padding: 0.32rem 0.6rem;
+      padding: 0.28rem 0.55rem;
       outline: none;
     }
-    .filter-row input[type=text] { width: 260px; }
-    .filter-row input[type=text]:focus,
-    .filter-row select:focus { border-color: var(--ink-mid); }
-    .filter-row input[type=text]::placeholder {
-      color: var(--ink-light);
-      font-style: italic;
-    }
+    .search-bar input[type=text] { width: 220px; }
+    .search-bar input[type=text]:focus,
+    .search-bar select:focus { border-color: var(--ink-mid); }
+    .search-bar input::placeholder { color: var(--ink-soft); font-style: italic; }
     .btn-search {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.72rem;
+      font-family: var(--mono);
+      font-size: 0.68rem;
       font-weight: bold;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       background: var(--ink);
-      color: var(--paper);
+      color: #fff;
       border: none;
       border-radius: 3px;
-      padding: 0.35rem 0.9rem;
+      padding: 0.3rem 0.8rem;
       cursor: pointer;
     }
     .btn-search:hover { background: var(--ink-mid); }
     .btn-clear {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.68rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--ink-light);
-      text-decoration: none;
-      border-bottom: 1px dotted var(--rule-dark);
-      padding-bottom: 1px;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--ink-soft);
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
-    .btn-clear:hover { color: var(--ink-mid); }
+    .btn-clear:hover { color: var(--ink); }
 
-    /* ── SECTION DIVIDER ── */
-    .section-rule {
-      border: none;
-      border-top: 1px solid var(--rule);
-      margin: 1.2rem 0 1rem;
+    /* â”€â”€ PAGE WRAP â”€â”€ */
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.25rem 1.25rem 4rem;
     }
 
-    /* ── CARD GRID ── */
+    /* â”€â”€ CARD GRID â”€â”€ */
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 0.9rem;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.75rem;
     }
 
-    /* ── FILE ENTRY CARD ── */
+    /* â”€â”€ CARD â”€â”€ */
     .card {
-      background: var(--paper);
-      border: 1px solid var(--rule-dark);
-      border-radius: 4px;
-      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.75rem 0.85rem 0.7rem 1rem;
       display: flex;
       flex-direction: column;
+      gap: 0.2rem;
       position: relative;
+      transition: border-color 0.12s;
     }
-    /* folder tab effect */
+    .card:hover { border-color: var(--border-mid); }
+
+    .card.is-alarm {
+      border-color: var(--red);
+      background: #fffafa;
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: none; }
+      50%       { box-shadow: 0 0 0 4px rgba(176,28,28,0.10); }
+    }
+
+    /* left accent bar */
     .card::before {
       content: '';
-      display: block;
-      height: 4px;
-      background: var(--paper-dark);
-      border-bottom: 1px solid var(--rule-dark);
-    }
-    .card:hover {
-      border-color: var(--ink-light);
-    }
-    .card.is-alarm {
-      border-color: var(--wanted-red);
-      box-shadow: 0 0 0 2px rgba(176,28,28,0.18);
-      animation: alarm-pulse 2.4s ease-in-out infinite;
-    }
-    @keyframes alarm-pulse {
-      0%, 100% { box-shadow: 0 0 0 2px rgba(176,28,28,0.18); }
-      50%       { box-shadow: 0 0 0 5px rgba(176,28,28,0.35); }
-    }
-    .card.is-alarm::before {
-      background: var(--wanted-red);
-    }
-
-    /* ALARM stamp */
-    .wanted-stamp {
       position: absolute;
-      top: 26px;
-      right: 6px;
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.68rem;
-      font-weight: bold;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--wanted-red);
-      border: 2.5px solid var(--wanted-red);
-      border-radius: 3px;
-      padding: 0.15rem 0.4rem;
-      opacity: 0.92;
-      pointer-events: none;
-      transform: rotate(-8deg);
-      z-index: 2;
-      background: rgba(245,240,232,0.88);
-      text-shadow: none;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 5px 0 0 5px;
+      background: var(--border);
     }
+    .card.is-alarm::before { background: var(--red); }
 
-    /* photo */
-    .card-photo {
-      background: var(--paper-dark);
-      display: flex;
+    /* â”€â”€ ALARM CHIP â”€â”€ */
+    .alarm-chip {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      height: 168px;
-      overflow: hidden;
-      flex-shrink: 0;
-      border-bottom: 1px solid var(--rule);
-      position: relative;
-    }
-    .card-photo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      filter: sepia(12%) contrast(0.96);
-    }
-    .photo-placeholder {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.35rem;
-      color: var(--ink-light);
-    }
-    .photo-placeholder .ph-box {
-      width: 58px;
-      height: 72px;
-      border: 2px dashed var(--rule-dark);
-      border-radius: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      color: var(--rule-dark);
-    }
-    .photo-placeholder .ph-label {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.62rem;
+      gap: 0.2rem;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      font-weight: bold;
       letter-spacing: 0.1em;
       text-transform: uppercase;
+      color: var(--red);
+      border: 1.5px solid var(--red);
+      border-radius: 3px;
+      padding: 0.06rem 0.32rem;
+      background: var(--red-faint);
+      width: fit-content;
+      margin-bottom: 0.2rem;
     }
 
-    /* body */
-    .card-body {
-      padding: 0.65rem 0.75rem 0.75rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      flex: 1;
-    }
-
+    /* â”€â”€ NAME â”€â”€ */
     .card-name {
-      font-family: Georgia, serif;
-      font-size: 0.92rem;
+      font-family: var(--serif);
+      font-size: 0.88rem;
       font-weight: bold;
-      line-height: 1.3;
       color: var(--ink);
-      padding-bottom: 0.45rem;
-      margin-bottom: 0.45rem;
-      border-bottom: 1px solid var(--rule);
+      line-height: 1.35;
+      padding-bottom: 0.38rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.05rem;
     }
-    .card-name.no-name {
-      font-style: italic;
+    .card-name.unknown {
       font-weight: normal;
-      color: var(--ink-light);
+      font-style: italic;
+      color: var(--ink-soft);
     }
 
+    /* â”€â”€ FIELDS â”€â”€ */
     .field {
       display: flex;
-      gap: 0;
-      font-size: 0.72rem;
-      line-height: 1.9;
-      border-bottom: 1px dotted var(--rule);
+      align-items: baseline;
+      gap: 0.35rem;
+      font-size: 0.71rem;
+      line-height: 1.8;
     }
-    .field:last-of-type { border-bottom: none; }
-    .field-label {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.62rem;
+    .field-key {
+      font-family: var(--mono);
+      font-size: 0.57rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--ink-light);
-      width: 62px;
+      letter-spacing: 0.07em;
+      color: var(--ink-soft);
+      width: 52px;
       flex-shrink: 0;
-      padding-top: 0.05rem;
     }
-    .field-value {
-      font-family: Georgia, serif;
+    .field-val {
       color: var(--ink-mid);
+      font-family: var(--serif);
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .field-value.charge {
+    .field-val.multiline {
       white-space: normal;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-      line-height: 1.45;
+      line-height: 1.4;
     }
 
-    .card-entity {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.62rem;
-      color: var(--ink-light);
-      letter-spacing: 0.05em;
+    /* â”€â”€ CARD FOOTER â”€â”€ */
+    .card-foot {
       margin-top: auto;
-      padding-top: 0.5rem;
-      padding-bottom: 0.05rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--border);
+      margin-top: 0.3rem;
     }
-    .card-timestamp {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.58rem;
-      color: var(--ink-light);
-      padding-top: 0.25rem;
-      line-height: 1.6;
+    .ref {
+      font-family: var(--mono);
+      font-size: 0.57rem;
+      color: var(--ink-soft);
+      letter-spacing: 0.03em;
     }
-    .card-timestamp .ts-alarm {
-      color: var(--wanted-red);
-      font-weight: bold;
-      letter-spacing: 0.04em;
+    .ts {
+      font-family: var(--mono);
+      font-size: 0.55rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      margin-top: 0.1rem;
     }
+    .ts-alarm { color: var(--red); font-weight: bold; }
 
-    /* ── EMPTY STATE ── */
+    /* â”€â”€ EMPTY STATE â”€â”€ */
     .empty {
       text-align: center;
       padding: 5rem 1rem;
-      color: var(--ink-light);
     }
-    .empty-header {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.78rem;
+    .empty-title {
+      font-family: var(--mono);
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      margin-bottom: 0.75rem;
+      color: var(--ink-soft);
+      margin-bottom: 0.6rem;
     }
-    .empty p {
-      font-size: 0.85rem;
-      color: var(--ink-mid);
-    }
-    .empty a { color: var(--ink); }
+    .empty p { font-size: 0.85rem; color: var(--ink-mid); }
+    .empty a  { color: var(--ink); }
 
-    /* ── PAGINATION ── */
+    /* â”€â”€ PAGINATION â”€â”€ */
     .pagination {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 0;
       margin-top: 2rem;
-      border: 1px solid var(--rule-dark);
-      border-radius: 4px;
       width: fit-content;
       margin-left: auto;
       margin-right: auto;
+      border: 1px solid var(--border-mid);
+      border-radius: 4px;
       overflow: hidden;
-      background: var(--paper);
+      background: var(--surface);
     }
     .pagination a {
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.75rem;
-      padding: 0.4rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.38rem 0.7rem;
       color: var(--ink-mid);
       text-decoration: none;
-      border-right: 1px solid var(--rule);
-      transition: background .1s;
+      border-right: 1px solid var(--border);
+      transition: background 0.1s;
     }
     .pagination a:last-child { border-right: none; }
-    .pagination a:hover     { background: var(--paper-dark); color: var(--ink); }
-    .pagination a.current  {
-      background: var(--ink);
-      color: var(--paper);
-      font-weight: bold;
-    }
-    .pagination a.disabled {
-      color: var(--rule-dark);
-      pointer-events: none;
-    }
+    .pagination a:hover      { background: var(--bg); color: var(--ink); }
+    .pagination a.current    { background: var(--ink); color: #fff; font-weight: bold; }
+    .pagination a.disabled   { color: var(--border-mid); pointer-events: none; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="header-top">
-    <div class="org-block">
-      <div class="org-name">Interpol — Red Notice Register</div>
-      <div class="org-sub">International Criminal Police Organization &nbsp;·&nbsp; Automated Surveillance Feed</div>
+  <div class="header-row">
+    <div class="brand">
+      <span class="brand-name">Interpol â€” Red Notice Register</span>
+      <span class="brand-sub">Automated Surveillance Feed</span>
     </div>
-    <div class="doc-meta">
-      <div>TOTAL RECORDS: <strong>{{ total }}</strong></div>
-      {% if total_alarms > 0 %}<div style="color:var(--wanted-red)">&#9888; ALARMS: <strong>{{ total_alarms }}</strong></div>{% endif %}
-      {% if total_pages > 1 %}<div>PAGE <strong>{{ page }}</strong> OF <strong>{{ total_pages }}</strong></div>{% endif %}
-      {% if q or nat %}<div>&#9655; FILTER ACTIVE</div>{% endif %}
+    <div class="header-meta">
+      <span class="meta-pill">Records <strong>{{ total }}</strong></span>
+      {% if total_alarms > 0 %}
+        <span class="meta-pill alarm">&#9888; Alarms <strong>{{ total_alarms }}</strong></span>
+      {% endif %}
+      {% if total_pages > 1 %}
+        <span class="meta-pill">Page <strong>{{ page }}</strong> / <strong>{{ total_pages }}</strong></span>
+      {% endif %}
     </div>
   </div>
 
-  <div class="filter-row">
-    <span class="filter-label">Search:</span>
+  <div class="search-bar">
     <form style="display:contents" method="get" action="/">
-      <input type="text" name="q" placeholder="surname or forename…" value="{{ q }}">
+      <input type="text" name="q" placeholder="surname or forenameâ€¦" value="{{ q }}">
       <select name="nat">
         <option value="">All nationalities</option>
         {% for n in nationalities %}
@@ -413,81 +343,64 @@
         {% endfor %}
       </select>
       <button type="submit" class="btn-search">Search</button>
-      {% if q or nat %}
-        <a href="/" class="btn-clear">Clear filter</a>
-      {% endif %}
+      {% if q or nat %}<a href="/" class="btn-clear">Clear</a>{% endif %}
     </form>
   </div>
 </header>
 
-<div class="page-wrap">
-  <hr class="section-rule">
-
+<div class="wrap">
   {% if notices %}
   <div class="cards">
     {% for notice in notices %}
-    {% set eid_dash = notice.entity_id | replace('/', '-') %}
-    <div class="card {% if notice.is_updated %}is-alarm{% endif %}">
+    <div class="card{% if notice.is_updated %} is-alarm{% endif %}">
 
       {% if notice.is_updated %}
-        <div class="wanted-stamp">&#9888; ALARM</div>
+        <div class="alarm-chip">&#9888; Alarm</div>
       {% endif %}
 
-      <div class="card-photo">
-        <img
-          src="/api/photo/{{ eid_dash }}"
-          alt="{{ notice.forename }} {{ notice.name }}"
-          loading="lazy"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-        <div class="photo-placeholder">
-          <div class="ph-box">?</div>
-          <span class="ph-label">No Photo</span>
+      {% if notice.name or notice.forename %}
+        <div class="card-name">
+          {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
+          {% elif notice.name %}{{ notice.name }}
+          {% else %}{{ notice.forename }}{% endif %}
         </div>
+      {% else %}
+        <div class="card-name unknown">â€” Unknown â€”</div>
+      {% endif %}
+
+      {% if notice.date_of_birth %}
+      <div class="field">
+        <span class="field-key">D.O.B.</span>
+        <span class="field-val">{{ notice.date_of_birth }}</span>
+      </div>
+      {% endif %}
+
+      {% if notice.nationality %}
+      <div class="field">
+        <span class="field-key">Nat.</span>
+        <span class="field-val">
+          <span class="flag" data-code="{{ notice.nationality }}"></span>{{ notice.nationality }}
+        </span>
+      </div>
+      {% endif %}
+
+      <div class="field">
+        <span class="field-key">Charge</span>
+        <span class="field-val multiline">
+          {{ notice.arrest_warrant if notice.arrest_warrant else 'â€”' }}
+        </span>
       </div>
 
-      <div class="card-body">
-        {% if notice.name or notice.forename %}
-          <div class="card-name">
-            {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
-            {% elif notice.name %}{{ notice.name }}
-            {% else %}{{ notice.forename }}{% endif %}
-          </div>
-        {% else %}
-          <div class="card-name no-name">— Name unknown —</div>
-        {% endif %}
-
-        {% if notice.date_of_birth %}
-        <div class="field">
-          <span class="field-label">D.O.B.</span>
-          <span class="field-value">{{ notice.date_of_birth }}</span>
-        </div>
-        {% endif %}
-
-        {% if notice.nationality %}
-        <div class="field">
-          <span class="field-label">Nat.</span>
-          <span class="field-value">
-            <span class="flag-emoji" data-code="{{ notice.nationality }}"></span>
-            {{ notice.nationality }}
-          </span>
-        </div>
-        {% endif %}
-
-        <div class="field">
-          <span class="field-label">Charge</span>
-          <span class="field-value charge">
-            {% if notice.arrest_warrant %}{{ notice.arrest_warrant }}{% else %}—{% endif %}
-          </span>
-        </div>
-
-        <div class="card-entity">REF: {{ notice.entity_id }}</div>
-        <div class="card-timestamp">
-          <div>ADDED: {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else '—' }}</div>
+      <div class="card-foot">
+        <div class="ref">{{ notice.entity_id }}</div>
+        <div class="ts">
+          {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else 'â€”' }}
           {% if notice.is_updated %}
-          <div class="ts-alarm">&#9888; ALARM: {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else '—' }}</div>
+          <br><span class="ts-alarm">&#9888; {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else 'â€”' }}</span>
           {% endif %}
         </div>
       </div>
+
     </div>
     {% endfor %}
   </div>
@@ -495,71 +408,54 @@
   {% if total_pages > 1 %}
   <nav class="pagination">
     <a href="?page=1&q={{ q }}&nat={{ nat }}"
-       {% if page == 1 %}class="disabled"{% endif %}>«</a>
+       {% if page == 1 %}class="disabled"{% endif %}>Â«</a>
     <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}"
-       {% if page == 1 %}class="disabled"{% endif %}>‹</a>
-
+       {% if page == 1 %}class="disabled"{% endif %}>â€¹</a>
     {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
       <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}"
          class="{% if p == page %}current{% endif %}">{{ p }}</a>
     {% endfor %}
-
     <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}"
-       {% if page == total_pages %}class="disabled"{% endif %}>›</a>
+       {% if page == total_pages %}class="disabled"{% endif %}>â€º</a>
     <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}"
-       {% if page == total_pages %}class="disabled"{% endif %}>»</a>
+       {% if page == total_pages %}class="disabled"{% endif %}>Â»</a>
   </nav>
   {% endif %}
 
   {% else %}
   <div class="empty">
-    <div class="empty-header">— No records found —</div>
+    <div class="empty-title">â€” No records found â€”</div>
     <p>
-      {% if q or nat %}
-        No entries match the current filter.
-        <a href="/">Clear filter</a>
-      {% else %}
-        Feed is initializing. Records will appear once the fetcher service completes ingestion.
-      {% endif %}
+      {% if q or nat %}No entries match the current filter. <a href="/">Clear filter</a>
+      {% else %}Feed is initializing. Records will appear once the fetcher completes ingestion.{% endif %}
     </p>
   </div>
   {% endif %}
 </div>
 
 <script>
-  // ── flag emoji helper ──
-  function toFlag(code) {
-    if (!code || code.length !== 2) return '';
-    return String.fromCodePoint(
-      ...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0))
-    );
-  }
-  document.querySelectorAll('.flag-emoji').forEach(el => {
-    el.textContent = toFlag(el.dataset.code);
+  // Flag emoji from ISO-2 country code
+  document.querySelectorAll('.flag[data-code]').forEach(el => {
+    const c = el.dataset.code;
+    if (c && c.length === 2) {
+      el.textContent = String.fromCodePoint(
+        ...[...c.toUpperCase()].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0))
+      ) + '\u00a0';
+    }
   });
 
-  // ── auto-refresh polling ──
-  // Polls /api/status every 30s; reloads page only when total or alarm count changes.
+  // Auto-refresh: poll /api/status every 30 s, reload only on change
   (function () {
-    const INTERVAL_MS = 30000;
     let knownTotal  = {{ total }};
     let knownAlarms = {{ total_alarms }};
-
-    async function poll() {
+    setInterval(async () => {
       try {
-        const res = await fetch('/api/status');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.total !== knownTotal || data.alarms !== knownAlarms) {
-          location.reload();
-        }
-      } catch (e) { /* network error — try again next tick */ }
-    }
-
-    setInterval(poll, INTERVAL_MS);
+        const d = await (await fetch('/api/status')).json();
+        if (d.total !== knownTotal || d.alarms !== knownAlarms) location.reload();
+      } catch (_) {}
+    }, 30000);
   })();
 </script>
 
 </body>
 </html>
-
