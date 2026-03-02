@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 import os
+import queue
+import threading
 
 import requests as _requests
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, Response
 
 from .config import WebConfig
 from .consumer import QueueConsumer
@@ -18,6 +20,25 @@ logger = logging.getLogger(__name__)
 _INTERPOL_BASE = "https://ws-public.interpol.int"
 _PHOTO_CACHE_DIR = os.getenv("PHOTO_CACHE_DIR", "/data/photos")
 _photo_session: _requests.Session | None = None
+
+# ------------------------------------------------------------------ #
+#  Server-Sent Events — broadcast to all connected browser tabs        #
+# ------------------------------------------------------------------ #
+_sse_lock: threading.Lock = threading.Lock()
+_sse_clients: list[queue.Queue] = []
+
+
+def _sse_notify(event: str) -> None:
+    """Push an event string to every connected SSE client (thread-safe)."""
+    with _sse_lock:
+        dead = []
+        for q in _sse_clients:
+            try:
+                q.put_nowait(event)
+            except queue.Full:
+                dead.append(q)
+        for q in dead:
+            _sse_clients.remove(q)
 
 
 def _get_photo_session() -> _requests.Session:
@@ -73,7 +94,7 @@ def create_app() -> Flask:
 
     app = Flask(__name__, template_folder="templates")
 
-    consumer = QueueConsumer(config)
+    consumer = QueueConsumer(config, on_change=_sse_notify)
     consumer.start_in_thread()
 
     @app.route("/")
@@ -145,6 +166,46 @@ def create_app() -> Flask:
             q=q,
             nat=nat,
             nationalities=nationalities,
+        )
+
+    @app.route("/api/stream")
+    def sse_stream():
+        """
+        Server-Sent Events endpoint.
+
+        The browser keeps a persistent connection here.  Whenever the
+        RabbitMQ consumer saves a new or updated notice, _sse_notify()
+        puts a message in the client's queue and the browser receives
+        it instantly — no polling delay.
+
+        A keepalive comment (': ping') is sent every 25 s so proxies and
+        browsers don't close the idle connection.
+        """
+        def generate():
+            client_q: queue.Queue = queue.Queue(maxsize=20)
+            with _sse_lock:
+                _sse_clients.append(client_q)
+            try:
+                yield "data: connected\n\n"
+                while True:
+                    try:
+                        event = client_q.get(timeout=25)
+                        yield f"data: {event}\n\n"
+                    except queue.Empty:
+                        yield ": ping\n\n"  # keepalive
+            finally:
+                with _sse_lock:
+                    if client_q in _sse_clients:
+                        _sse_clients.remove(client_q)
+
+        return Response(
+            generate(),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
+            },
         )
 
     @app.route("/api/status")

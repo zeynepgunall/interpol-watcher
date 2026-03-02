@@ -300,12 +300,40 @@
             const ps = JSON.parse(document.getElementById('page-state').textContent);
             let knownTotal = ps.total;
             let knownAlarms = ps.alarms;
-            setInterval(async () => {
-                try {
-                    const d = await (await fetch('/api/status')).json();
-                    if (d.total !== knownTotal || d.alarms !== knownAlarms) location.reload();
-                } catch (_) {}
-            }, 30000);
+
+            // --- Server-Sent Events: anında güncelleme ---
+            // Yeni kayıt veya alarm geldiğinde consumer thread  
+            // SSE üzerinden "INSERTED" veya "UPDATED" mesajı gönderir;
+            // tarayıcı bunu alır almaz sayfayı yeniler.
+            function startSSE() {
+                const es = new EventSource('/api/stream');
+                es.onmessage = function (e) {
+                    if (e.data === 'INSERTED' || e.data === 'UPDATED') {
+                        location.reload();
+                    }
+                };
+                es.onerror = function () {
+                    // SSE bağlantısı kopunca 10sn polling'e düş
+                    es.close();
+                    setTimeout(pollFallback, 10000);
+                };
+            }
+
+            // --- Yedek polling (SSE çalışmadığında) ---
+            function pollFallback() {
+                fetch('/api/status')
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.total !== knownTotal || d.alarms !== knownAlarms) {
+                            location.reload();
+                        } else {
+                            setTimeout(pollFallback, 10000);
+                        }
+                    })
+                    .catch(() => setTimeout(pollFallback, 10000));
+            }
+
+            startSSE();
         })();
     </script>
 </body>

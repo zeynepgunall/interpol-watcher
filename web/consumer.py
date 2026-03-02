@@ -22,10 +22,15 @@ class QueueConsumer:
     Business rules (INSERT vs UPDATE / alarm) are fully delegated to
     NoticeService — this class is responsible only for transport: deserialising
     the message, calling the service, and ack-ing the delivery.
+
+    ``on_change`` is an optional callable invoked after every successful
+    INSERT or UPDATE so callers (e.g. the SSE endpoint) can push a
+    real-time notification to connected browser clients.
     """
 
-    def __init__(self, config: WebConfig) -> None:
+    def __init__(self, config: WebConfig, on_change=None) -> None:
         self._config = config
+        self._on_change = on_change
         session_factory = create_session_factory(config)
         self._notice_service = NoticeService(session_factory)
 
@@ -46,6 +51,7 @@ class QueueConsumer:
 
         Idempotent: calling this method twice with the same body produces
         exactly one DB row; the second call sets is_updated=True (alarm).
+        After a successful INSERT or UPDATE, notifies SSE clients via on_change.
         """
         payload = json.loads(body.decode("utf-8"))
         result = self._notice_service.upsert(payload)
@@ -53,6 +59,11 @@ class QueueConsumer:
             logger.warning("Dropped message — no entity_id: %s", payload)
         elif result.outcome is UpsertOutcome.ERROR:
             logger.error("Failed to persist %s: %s", result.entity_id, result.error)
+        elif self._on_change is not None:
+            try:
+                self._on_change(result.outcome.name)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("SSE notify failed: %s", exc)
 
     def start_in_thread(self) -> None:
         """Start the consumer loop in a background daemon thread."""
