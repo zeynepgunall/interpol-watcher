@@ -1,10 +1,10 @@
 """
-run_local.py — RabbitMQ olmadan doğrudan SQLite'a veri çeker.
+run_local.py — Fetch red notices directly into SQLite, bypassing RabbitMQ.
 
-Kullanım:
-    python run_local.py              # tam tarama (fetch_all)
-    python run_local.py --fast       # yalnızca ilk sayfa (~160 kayıt, hızlı test)
-    python run_local.py --extended   # extended multi-pass tarama
+Usage:
+    python run_local.py              # full scan
+    python run_local.py --fast       # first page only (~160 records, quick test)
+    python run_local.py --extended   # extended multi-pass scan
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 
-# Proje kök dizinini sys.path'e ekle
+# Add project root to path so both fetcher/ and web/ are importable.
 sys.path.insert(0, os.path.dirname(__file__))
 
 from fetcher.interpol_client import InterpolClient
@@ -60,7 +60,7 @@ def main() -> None:
 
     logger.info("Fetched %d notices from Interpol API.", len(notices))
 
-    # Persist via NoticeService (no duplicate upsert logic here)
+    # Persist each notice via NoticeService (upsert handles deduplication).
     inserted = updated = skipped = errors = 0
     for i, rn in enumerate(notices, 1):
         result = service.upsert(rn.__dict__)
@@ -81,7 +81,7 @@ def main() -> None:
         "Done. inserted=%d  updated=%d  skipped=%d  errors=%d  total=%d",
         inserted, updated, skipped, errors, len(notices),
     )
-    logger.info("Open http://127.0.0.1:5000 to see the results.")
+    logger.info("Open http://127.0.0.1:5000 to view results (start Flask first).")
 
 
 if __name__ == "__main__":
