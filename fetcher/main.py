@@ -9,13 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class FetchOrchestrator:
-    """
-    Orchestrates the periodic fetch-and-publish cycle for Interpol red notices.
-
-    All dependencies (config, client, publisher) are injected via the
-    constructor to keep the class fully testable without real network or
-    RabbitMQ connections.
-    """
+    """Periodic fetch-and-publish loop; dependencies injected for testability."""
 
     def __init__(
         self,
@@ -28,12 +22,6 @@ class FetchOrchestrator:
         self._publisher = publisher
 
     def run_forever(self) -> None:
-        """
-        Main loop: fetch → publish → sleep → repeat.
-
-        Errors within a cycle are caught and logged; the loop never
-        terminates on its own.
-        """
         logger.info("Starting Interpol fetcher loop.")
         logger.info("Base URL       : %s", self._config.interpol_base_url)
         logger.info("Fetch interval : %s s", self._config.fetch_interval_seconds)
@@ -75,7 +63,7 @@ class FetchOrchestrator:
 
     @staticmethod
     def _mock_notices() -> list[RedNotice]:
-        """Return a small hard-coded dataset for smoke-tests (USE_MOCK_DATA=true)."""
+        # Small fixed dataset for USE_MOCK_DATA=true smoke-tests.
         return [
             RedNotice(
                 entity_id="2026/0001",
@@ -115,12 +103,7 @@ def _configure_logging() -> None:
 
 
 def run_forever() -> None:
-    """
-    Module-level convenience wrapper kept for backward compatibility.
-
-    Reads configuration from the environment, wires up dependencies, and
-    delegates to FetchOrchestrator.run_forever().
-    """
+    """Entry point: read config from env, wire dependencies, start the loop."""
     _configure_logging()
     config = FetcherConfig.from_env()
     client = InterpolClient(config.interpol_base_url)

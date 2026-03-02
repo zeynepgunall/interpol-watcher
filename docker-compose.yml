@@ -29,7 +29,7 @@ services:
       RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-interpol_red_notices}
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      # Yeni pass kontrolleri
+      # Extended pass controls
       ENABLE_PASS_AGE_0_9: ${ENABLE_PASS_AGE_0_9:-true}
       ENABLE_PASS_IN_PK_1YR: ${ENABLE_PASS_IN_PK_1YR:-true}
       VERY_HIGH_NATIONALITIES_1YR: ${VERY_HIGH_NATIONALITIES_1YR:-IN,PK}

@@ -6,6 +6,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY fetcher /app/fetcher
+COPY shared /app/shared
 
 ENV PYTHONUNBUFFERED=1
 

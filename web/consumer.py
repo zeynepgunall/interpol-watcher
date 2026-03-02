@@ -1,10 +1,10 @@
-import json
 import logging
 import threading
 import time
 
 import pika
 
+from shared.message import decode as _decode
 from .config import WebConfig
 from .models import create_session_factory
 from .notice_service import NoticeService, UpsertOutcome
@@ -13,22 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class QueueConsumer:
-    """
-    RabbitMQ consumer that persists incoming red notice messages to the database.
+    """RabbitMQ consumer that deserialises notice messages and delegates persistence to NoticeService."""
 
-    Runs as a daemon thread inside the web container so it shares the same
-    process as the Flask application.
-
-    Business rules (INSERT vs UPDATE / alarm) are fully delegated to
-    NoticeService — this class is responsible only for transport: deserialising
-    the message, calling the service, and ack-ing the delivery.
-
-    ``on_change`` is an optional callable invoked after every successful
-    INSERT or UPDATE so callers (e.g. the SSE endpoint) can push a
-    real-time notification to connected browser clients.
-    """
-
-    _on_change = None  # class-level default; overridden per-instance in __init__
+    _on_change = None  # default; overridden per-instance via __init__
 
     def __init__(self, config: WebConfig, on_change=None) -> None:
         self._config = config
@@ -37,7 +24,6 @@ class QueueConsumer:
         self._notice_service = NoticeService(session_factory)
 
     def _connection_parameters(self) -> pika.ConnectionParameters:
-        """Build pika connection parameters from the current WebConfig."""
         credentials = pika.PlainCredentials(
             self._config.rabbitmq_user, self._config.rabbitmq_password
         )
@@ -48,14 +34,7 @@ class QueueConsumer:
         )
 
     def _handle_message(self, body: bytes) -> None:
-        """
-        Deserialise one RabbitMQ message and delegate persistence to NoticeService.
-
-        Idempotent: calling this method twice with the same body produces
-        exactly one DB row; the second call sets is_updated=True (alarm).
-        After a successful INSERT or UPDATE, notifies SSE clients via on_change.
-        """
-        payload = json.loads(body.decode("utf-8"))
+        payload = _decode(body)
         result = self._notice_service.upsert(payload)
         if result.outcome is UpsertOutcome.SKIPPED:
             logger.warning("Dropped message — no entity_id: %s", payload)

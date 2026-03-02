@@ -1,10 +1,10 @@
-import json
 import logging
 import time
 from typing import Iterable
 
 import pika
 
+from shared.message import encode as _encode
 from .config import FetcherConfig
 from .interpol_client import RedNotice
 
@@ -44,7 +44,7 @@ class QueuePublisher:
         channel.queue_declare(queue=self._config.rabbitmq_queue_name, durable=True)
 
         for notice in notices:
-            payload = json.dumps(notice.__dict__).encode("utf-8")
+            payload = _encode(notice.__dict__)
             channel.basic_publish(
                 exchange="",
                 routing_key=self._config.rabbitmq_queue_name,
