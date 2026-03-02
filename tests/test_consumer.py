@@ -16,6 +16,7 @@ import pytest
 from web.config import WebConfig
 from web.consumer import QueueConsumer
 from web.models import Notice, create_session_factory
+from web.notice_service import NoticeService
 
 
 # ---------------------------------------------------------------------------
@@ -42,16 +43,15 @@ def session_factory(mem_config: WebConfig):
 
 
 @pytest.fixture
-def consumer(mem_config: WebConfig, session_factory):
+def consumer(session_factory):
     """
     QueueConsumer with RabbitMQ bypassed.
 
-    Uses __new__ to skip __init__ entirely, then manually assigns the two
-    attributes that _handle_message relies on.
+    Uses __new__ to skip __init__ entirely, then manually assigns the
+    NoticeService that _handle_message relies on.
     """
     c = QueueConsumer.__new__(QueueConsumer)
-    c._config = mem_config
-    c._SessionFactory = session_factory
+    c._notice_service = NoticeService(session_factory)
     return c
 
 

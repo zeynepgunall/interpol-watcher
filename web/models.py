@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -40,14 +41,23 @@ class Notice(Base):
     all_nationalities = Column(String(1024), nullable=True)   # tüm uyruklar, örn. "DE,TR"
     arrest_warrant = Column(String(1024), nullable=True)
     thumbnail_url = Column(String(512), nullable=True)    # Interpol _links.thumbnail.href (may be None)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
     updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False,
     )
     is_updated = Column(Boolean, default=False, nullable=False)
 
 
 def create_session_factory(config: WebConfig):
+    # Auto-create the directory for SQLite databases so the app works out of the box
+    if config.database_url.startswith("sqlite:///"):
+        db_path = config.database_url[len("sqlite:///"):]
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
     engine = create_engine(config.database_url, echo=False, future=True)
     Base.metadata.create_all(engine)
     _ensure_columns(engine)

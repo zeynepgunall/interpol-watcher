@@ -9,6 +9,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
 import requests
+
+# ScanStateManager and PassContext now live in their own module.
+# Re-exported here so any existing code that does
+# `from fetcher.interpol_client import ScanStateManager` continues to work.
+from .scan_state import PassContext, ScanStateManager  # noqa: F401
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,75 +63,6 @@ class RedNotice:
             arrest_warrant=arrest_warrant,
             thumbnail_url=thumbnail_url,
         )
-
-
-class ScanStateManager:
-    """
-    Pass ilerlemesini JSON dosyasına kaydeder — fetcher yeniden başlarsa kaldığı yerden devam eder.
-    Dosya: /data/scan_state.json (docker volume'da kalıcı).
-    """
-
-    def __init__(self, state_file: str) -> None:
-        self.state_file = state_file
-        self._state = self._load()
-
-    def _load(self) -> Dict[str, Any]:
-        try:
-            with open(self.state_file, encoding="utf-8") as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            return {"completed_passes": [], "current_pass": None, "current_query_idx": 0}
-
-    def _save(self) -> None:
-        try:
-            os.makedirs(os.path.dirname(self.state_file) or ".", exist_ok=True)
-            tmp = self.state_file + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(self._state, f, indent=2)
-            os.replace(tmp, self.state_file)
-        except OSError as exc:
-            logger.warning("State file write failed: %s", exc)
-
-    def is_pass_done(self, pass_name: str) -> bool:
-        return pass_name in self._state["completed_passes"]
-
-    def get_resume_idx(self, pass_name: str) -> int:
-        """Aynı pass yarıda kalmışsa kaldığı sorgu indexinden devam et."""
-        if self._state.get("current_pass") == pass_name:
-            return self._state.get("current_query_idx", 0)
-        return 0
-
-    def mark_query_progress(self, pass_name: str, query_idx: int) -> None:
-        self._state["current_pass"] = pass_name
-        self._state["current_query_idx"] = query_idx
-        self._save()
-
-    def mark_pass_done(self, pass_name: str) -> None:
-        if pass_name not in self._state["completed_passes"]:
-            self._state["completed_passes"].append(pass_name)
-        self._state["current_pass"] = None
-        self._state["current_query_idx"] = 0
-        self._save()
-        logger.info("STATE | pass '%s' marked done — saved to %s", pass_name, self.state_file)
-
-    def reset(self) -> None:
-        """Tüm state'i sıfırla (yeni tam tarama)."""
-        self._state = {"completed_passes": [], "current_pass": None, "current_query_idx": 0}
-        self._save()
-
-
-@dataclass
-class PassContext:
-    """
-    Immutable context for a single sweep pass.
-    Created ONCE at pass start; combo_total never changes after initialisation.
-    Passed down through _fetch_pages_into so every log line carries the same
-    pass_id / combo_total without re-computing them.
-    """
-    pass_id: str        # "13", "A", "B", "19b", …
-    name: str           # full label, e.g. "Pass 13 — F+nat+arrestWarrant"
-    combo_total: int    # FIXED at pass start, never mutated
-    state_file: str = "<none>"
 
 
 class InterpolClient:

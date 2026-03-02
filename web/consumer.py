@@ -2,31 +2,32 @@ import json
 import logging
 import threading
 import time
-from typing import Any, Dict
 
 import pika
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from .config import WebConfig
-from .models import Notice, create_session_factory
+from .models import create_session_factory
+from .notice_service import NoticeService, UpsertOutcome
 
-logger = logging.getLogger("consumer")
+logger = logging.getLogger(__name__)
 
 
 class QueueConsumer:
     """
-    RabbitMQ consumer that persists incoming red notice messages to SQLite.
+    RabbitMQ consumer that persists incoming red notice messages to the database.
 
     Runs as a daemon thread inside the web container so it shares the same
-    process as the Flask application.  Business rules:
-      - New entity_id  → INSERT a fresh Notice row (is_updated=False)
-      - Known entity_id → UPDATE all fields, set is_updated=True (⚠ ALARM)
+    process as the Flask application.
+
+    Business rules (INSERT vs UPDATE / alarm) are fully delegated to
+    NoticeService — this class is responsible only for transport: deserialising
+    the message, calling the service, and ack-ing the delivery.
     """
 
     def __init__(self, config: WebConfig) -> None:
         self._config = config
-        self._SessionFactory = create_session_factory(config)
+        session_factory = create_session_factory(config)
+        self._notice_service = NoticeService(session_factory)
 
     def _connection_parameters(self) -> pika.ConnectionParameters:
         """Build pika connection parameters from the current WebConfig."""
@@ -41,62 +42,17 @@ class QueueConsumer:
 
     def _handle_message(self, body: bytes) -> None:
         """
-        Process one RabbitMQ message.
+        Deserialise one RabbitMQ message and delegate persistence to NoticeService.
 
-        Deserializes the JSON body, looks up the entity_id in SQLite, then
-        either inserts a new Notice or updates the existing one and raises
-        the is_updated alarm flag.
+        Idempotent: calling this method twice with the same body produces
+        exactly one DB row; the second call sets is_updated=True (alarm).
         """
-        payload: Dict[str, Any] = json.loads(body.decode("utf-8"))
-        session: Session = self._SessionFactory()
-
-        try:
-            entity_id = payload.get("entity_id")
-            if not entity_id:
-                logger.warning("Skipping message without entity_id: %s", payload)
-                return
-
-            notice: Notice | None = (
-                session.query(Notice)
-                .filter(Notice.entity_id == entity_id)
-                .one_or_none()
-            )
-
-            if notice is None:
-                notice = Notice(
-                    entity_id=entity_id,
-                    name=payload.get("name"),
-                    forename=payload.get("forename"),
-                    date_of_birth=payload.get("date_of_birth"),
-                    nationality=payload.get("nationality"),
-                    all_nationalities=payload.get("all_nationalities"),
-                    arrest_warrant=payload.get("arrest_warrant"),
-                    thumbnail_url=payload.get("thumbnail_url"),
-                )
-                session.add(notice)
-                logger.info("Inserted new notice %s", entity_id)
-            else:
-                # any re-arrival is considered an update and will be shown as alarm
-                notice.name = payload.get("name")
-                notice.forename = payload.get("forename")
-                notice.date_of_birth = payload.get("date_of_birth")
-                notice.nationality = payload.get("nationality")
-                notice.all_nationalities = payload.get("all_nationalities")
-                notice.arrest_warrant = payload.get("arrest_warrant")
-                # Update thumbnail only if we received a better URL
-                if payload.get("thumbnail_url"):
-                    notice.thumbnail_url = payload.get("thumbnail_url")
-                notice.is_updated = True
-                logger.info("Updated existing notice %s", entity_id)
-
-            session.commit()
-        except SQLAlchemyError:
-            session.rollback()
-            logger.exception("Database error while handling message.")
-        except Exception:  # noqa: BLE001
-            logger.exception("Unexpected error while handling message.")
-        finally:
-            session.close()
+        payload = json.loads(body.decode("utf-8"))
+        result = self._notice_service.upsert(payload)
+        if result.outcome is UpsertOutcome.SKIPPED:
+            logger.warning("Dropped message — no entity_id: %s", payload)
+        elif result.outcome is UpsertOutcome.ERROR:
+            logger.error("Failed to persist %s: %s", result.entity_id, result.error)
 
     def start_in_thread(self) -> None:
         """Start the consumer loop in a background daemon thread."""

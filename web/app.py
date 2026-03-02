@@ -10,11 +10,7 @@ from .config import WebConfig
 from .consumer import QueueConsumer
 from .models import Notice, create_session_factory
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
-logger = logging.getLogger("web")
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------ #
 #  Photo proxy — singleton requests.Session with Interpol warmup      #
@@ -64,6 +60,14 @@ def create_app() -> Flask:
     daemon thread, and registers all routes.  Called once at startup (and
     again per test fixture when TESTING=True).
     """
+    # Configure logging once at app-factory time (guard prevents double-init
+    # when create_app is called multiple times in tests).
+    if not logging.root.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+        )
+
     config = WebConfig.from_env()
     SessionFactory = create_session_factory(config)
 

@@ -1,228 +1,313 @@
-﻿<!doctype html>
-<html lang="tr">
+﻿<!DOCTYPE html>
+<html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <title>Interpol Red Notice Register</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+    <title>Interpol Red Notice Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
 
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #111;
-      color: #ddd;
-      font-size: 13px;
-    }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-    a { color: #cc0000; }
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            grid-auto-rows: minmax(200px, auto);
+        }
 
-    /* HEADER */
-    #header {
-      background: #111;
-      border-bottom: 2px solid #cc0000;
-      padding: 10px 16px;
-      position: sticky;
-      top: 0;
-      z-index: 9;
-    }
-    #header h1 {
-      font-size: 14px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: #fff;
-      margin-bottom: 6px;
-    }
-    #header h1 em { color: #cc0000; font-style: normal; }
-    #meta {
-      font-size: 11px;
-      color: #888;
-      margin-bottom: 8px;
-    }
-    #meta .alarm { color: #cc0000; font-weight: bold; }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            transition: transform 0.2s;
+        }
 
-    /* SEARCH */
-    #search { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    #search input, #search select {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 12px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #ddd;
-      padding: 4px 8px;
-    }
-    #search input { width: 200px; }
-    #search input::placeholder { color: #555; }
-    #search button {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 11px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      background: #cc0000;
-      color: #fff;
-      border: none;
-      padding: 4px 14px;
-      cursor: pointer;
-    }
-    #search button:hover { background: #aa0000; }
-    #search .clr { font-size: 11px; color: #666; text-decoration: underline; cursor: pointer; }
+        .card:hover {
+            transform: scale(1.05);
+        }
 
-    /* WRAP */
-    #wrap { max-width: 1400px; margin: 0 auto; padding: 14px 16px 60px; }
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 1px solid #ddd;
+        }
 
-    /* TABLE */
-    table { width: 100%; border-collapse: collapse; }
-    thead tr { background: #1a1a1a; border-bottom: 1px solid #cc0000; }
-    thead th {
-      font-size: 10px;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #888;
-      padding: 6px 10px;
-      text-align: left;
-      white-space: nowrap;
-    }
-    tbody tr { border-bottom: 1px solid #1e1e1e; }
-    tbody tr:hover { background: #161616; }
-    tbody tr.alarm { border-left: 3px solid #cc0000; }
-    tbody td {
-      padding: 6px 10px;
-      font-size: 12px;
-      color: #bbb;
-      vertical-align: top;
-    }
-    td.bold { color: #eee; font-weight: bold; }
-    td.red  { color: #cc0000; font-weight: bold; font-size: 11px; }
-    td.dim  { color: #555; font-size: 11px; }
-    td.nats { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-content {
+            padding: 10px;
+        }
 
-    /* EMPTY */
-    #empty { text-align: center; padding: 60px 16px; color: #555; font-size: 12px; }
+        .card-content h2 {
+            font-size: 1.2em;
+            margin: 0;
+        }
 
-    /* PAGINATION */
-    #pages { display: flex; justify-content: center; gap: 2px; margin-top: 20px; }
-    #pages a {
-      font-size: 12px;
-      padding: 4px 10px;
-      background: #1a1a1a;
-      color: #888;
-      text-decoration: none;
-      border: 1px solid #2a2a2a;
-    }
-    #pages a:hover { background: #222; color: #ddd; }
-    #pages a.cur   { background: #cc0000; color: #fff; font-weight: bold; border-color: #cc0000; }
-    #pages a.off   { color: #333; pointer-events: none; }
-  </style>
+        .card-content p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .card-content a {
+            display: inline-block;
+            margin-top: 10px;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .card-content a:hover {
+            text-decoration: underline;
+        }
+
+        .alarm-badge {
+            background-color: #ff4d4d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .timestamp {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .dim {
+            font-size: 0.8em;
+            color: #aaa;
+        }
+
+        .search-bar {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-bar input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .search-bar select {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .search-bar button {
+            padding: 10px 15px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .search-bar button:hover {
+            background-color: #0056b3;
+        }
+
+        .search-bar a.clr {
+            font-size: 14px;
+            color: #888;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .meta {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .meta .alarm-count {
+            color: #cc0000;
+            font-weight: bold;
+        }
+
+        #empty {
+            text-align: center;
+            padding: 60px 16px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        /* PAGINATION */
+        #pages {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        #pages a {
+            font-size: 13px;
+            padding: 5px 12px;
+            background: #fff;
+            color: #555;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #pages a:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        #pages a.cur {
+            background: #007bff;
+            color: #fff;
+            font-weight: bold;
+            border-color: #007bff;
+        }
+
+        #pages a.off {
+            color: #ccc;
+            pointer-events: none;
+        }
+    </style>
 </head>
+
 <body>
+    <div class="container">
+        <h1>Interpol Red Notice Register</h1>
 
-<div id="header">
-  <h1>Interpol &mdash; <em>Red Notice</em> Register</h1>
-  <div id="meta">
-    Records: <strong>{{ total }}</strong>
-    {% if total_alarms > 0 %}&nbsp;&nbsp;<span class="alarm">&#9888; Alarms: {{ total_alarms }}</span>{% endif %}
-    {% if total_pages > 1 %}&nbsp;&nbsp;Page {{ page }} / {{ total_pages }}{% endif %}
-  </div>
-  <form id="search" method="get" action="/">
-    <input type="text" name="q" placeholder="Surname or forename&hellip;" value="{{ q }}">
-    <select name="nat">
-      <option value="">All nationalities</option>
-      {% for n in nationalities %}
-        <option value="{{ n }}" {% if n == nat %}selected{% endif %}>{{ n }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit">Search</button>
-    {% if q or nat %}<a href="/" class="clr">Clear</a>{% endif %}
-  </form>
-</div>
+        <div class="meta">
+            Records: <strong>{{ total }}</strong>
+            {% if total_alarms > 0 %}
+            &nbsp;&nbsp;<span class="alarm-count">&#9888; Alarms: {{ total_alarms }}</span>
+            {% endif %}
+            {% if total_pages > 1 %}
+            &nbsp;&nbsp;Page {{ page }} / {{ total_pages }}
+            {% endif %}
+        </div>
 
-<div id="wrap">
-  {% if notices %}
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>D.O.B.</th>
-        <th>Nationality</th>
-        <th>All Nationalities</th>
-        <th>Ref</th>
-        <th>Added</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for notice in notices %}
-    <tr{% if notice.is_updated %} class="alarm"{% endif %}>
-      <td class="bold">
-        {% if notice.name or notice.forename %}
-          {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
-          {% elif notice.name %}{{ notice.name }}
-          {% else %}{{ notice.forename }}{% endif %}
-        {% else %}&mdash;{% endif %}
-      </td>
-      <td>{{ notice.date_of_birth if notice.date_of_birth else '&mdash;' }}</td>
-      <td>
-        {% if notice.nationality %}
-          <span class="flag" data-code="{{ notice.nationality }}"></span>{{ notice.nationality }}
-        {% else %}&mdash;{% endif %}
-      </td>
-      <td class="nats">{{ notice.all_nationalities if notice.all_nationalities else '&mdash;' }}</td>
-      <td class="dim">{{ notice.entity_id }}</td>
-      <td class="dim">{{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else '&mdash;' }}</td>
-      <td>
-        {% if notice.is_updated %}
-          <span class="red">&#9888; ALARM<br>{{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else '' }}</span>
-        {% else %}
-          <span class="dim">OK</span>
+        <form action="/" method="get">
+            <div class="search-bar">
+                <input type="text" name="q" placeholder="Surname or forename&hellip;" value="{{ q }}" />
+                <select name="nat">
+                    <option value="">All nationalities</option>
+                    {% for n in nationalities %}
+                    <option value="{{ n }}" {% if n == nat %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Search</button>
+                {% if q or nat %}<a href="/" class="clr">Clear</a>{% endif %}
+            </div>
+        </form>
+
+        {% if notices %}
+        <div class="card-container">
+            {% for notice in notices %}
+            <div class="card">
+                <img src="/api/photo/{{ notice.entity_id }}" alt="Notice Image"
+                    onerror="this.src='https://via.placeholder.com/300x200?text=No+Image';">
+                <div class="card-content">
+                    <h2>
+                        {% if notice.name or notice.forename %}
+                            {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
+                            {% elif notice.name %}{{ notice.name }}
+                            {% else %}{{ notice.forename }}{% endif %}
+                        {% else %}&mdash;{% endif %}
+                        {% if notice.is_updated %}
+                        <span class="alarm-badge">UPDATED</span>
+                        {% endif %}
+                    </h2>
+                    <p><strong>Date of Birth:</strong> {{ notice.date_of_birth or '—' }}</p>
+                    <p>
+                        <strong>Nationality:</strong>
+                        <span class="flag" data-code="{{ notice.nationality or '' }}"></span>{{ notice.nationality or '—' }}
+                    </p>
+                    {% if notice.all_nationalities %}
+                    <p><strong>All Nationalities:</strong> {{ notice.all_nationalities }}</p>
+                    {% endif %}
+                    <p class="dim">Ref: {{ notice.entity_id }}</p>
+                    <p class="timestamp">Added: {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else '—' }}</p>
+                    {% if notice.is_updated %}
+                    <p class="timestamp" style="color:#cc0000;">&#9888; Updated: {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else '' }}</p>
+                    {% endif %}
+                    <div class="links">
+                        <a href="https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices/{{ notice.entity_id.replace('/', '-') }}" target="_blank">More Info</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if total_pages > 1 %}
+        <div id="pages">
+            <a href="?page=1&q={{ q }}&nat={{ nat }}" {% if page == 1 %}class="off"{% endif %}>&#171;</a>
+            <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}" {% if page == 1 %}class="off"{% endif %}>&#8249;</a>
+            {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
+            <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}" class="{% if p == page %}cur{% endif %}">{{ p }}</a>
+            {% endfor %}
+            <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}" {% if page == total_pages %}class="off"{% endif %}>&#8250;</a>
+            <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}" {% if page == total_pages %}class="off"{% endif %}>&#187;</a>
+        </div>
         {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
 
-  {% if total_pages > 1 %}
-  <div id="pages">
-    <a href="?page=1&q={{ q }}&nat={{ nat }}" {% if page == 1 %}class="off"{% endif %}>&#171;</a>
-    <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}" {% if page == 1 %}class="off"{% endif %}>&#8249;</a>
-    {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
-      <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}" class="{% if p == page %}cur{% endif %}">{{ p }}</a>
-    {% endfor %}
-    <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}" {% if page == total_pages %}class="off"{% endif %}>&#8250;</a>
-    <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}" {% if page == total_pages %}class="off"{% endif %}>&#187;</a>
-  </div>
-  {% endif %}
+        {% else %}
+        <div id="empty">
+            {% if q or nat %}No entries match the current filter. <a href="/">Clear filter</a>
+            {% else %}Feed is initializing. Records will appear once the fetcher completes ingestion.{% endif %}
+        </div>
+        {% endif %}
+    </div>
 
-  {% else %}
-  <div id="empty">
-    {% if q or nat %}No entries match the current filter. <a href="/">Clear filter</a>
-    {% else %}Feed is initializing. Records will appear once the fetcher completes ingestion.{% endif %}
-  </div>
-  {% endif %}
-</div>
+    <script id="page-state" type="application/json">{"total": {{ total }}, "alarms": {{ total_alarms }}}</script>
+    <script>
+        document.querySelectorAll('.flag[data-code]').forEach(el => {
+            const c = el.dataset.code;
+            if (c && c.length === 2)
+                el.textContent = String.fromCodePoint(
+                    ...[...c.toUpperCase()].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0))
+                ) + ' ';
+        });
 
-<script>
-  document.querySelectorAll('.flag[data-code]').forEach(el => {
-    const c = el.dataset.code;
-    if (c && c.length === 2)
-      el.textContent = String.fromCodePoint(
-        ...[...c.toUpperCase()].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0))
-      ) + ' ';
-  });
-
-  (function () {
-    let knownTotal  = {{ total }};
-    let knownAlarms = {{ total_alarms }};
-    setInterval(async () => {
-      try {
-        const d = await (await fetch('/api/status')).json();
-        if (d.total !== knownTotal || d.alarms !== knownAlarms) location.reload();
-      } catch (_) {}
-    }, 30000);
-  })();
-</script>
-
+        (function () {
+            const ps = JSON.parse(document.getElementById('page-state').textContent);
+            let knownTotal = ps.total;
+            let knownAlarms = ps.alarms;
+            setInterval(async () => {
+                try {
+                    const d = await (await fetch('/api/status')).json();
+                    if (d.total !== knownTotal || d.alarms !== knownAlarms) location.reload();
+                } catch (_) {}
+            }, 30000);
+        })();
+    </script>
 </body>
+
 </html>
