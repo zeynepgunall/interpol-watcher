@@ -1,19 +1,41 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
+
+
+def _bool_env(key: str, default: str = "true") -> bool:
+    return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "y"}
 
 
 @dataclass
 class FetcherConfig:
     interpol_base_url: str
     fetch_interval_seconds: int
+    use_mock_data: bool
+    fetch_all: bool
+    fetch_extended: bool
     rabbitmq_host: str
     rabbitmq_port: int
     rabbitmq_queue_name: str
     rabbitmq_user: str
     rabbitmq_password: str
 
+    # --- Yeni pass kontrolleri ---
+    enable_pass_age_0_9: bool        # ENABLE_PASS_AGE_0_9      (default: true)
+    enable_pass_in_pk_1yr: bool      # ENABLE_PASS_IN_PK_1YR    (default: true)
+    very_high_nationalities_1yr: List[str]  # VERY_HIGH_NATIONALITIES_1YR (default: "IN,PK")
+    age_1yr_min: int                 # AGE_1YR_MIN               (default: 10)
+    age_1yr_max: int                 # AGE_1YR_MAX               (default: 99)
+
+    # --- Rate-limit & state ---
+    request_delay_seconds: float     # REQUEST_DELAY_SECONDS     (default: 1.5)
+    state_file_path: str             # STATE_FILE_PATH           (default: /data/scan_state.json)
+
     @classmethod
     def from_env(cls) -> "FetcherConfig":
+        raw_nats = os.getenv("VERY_HIGH_NATIONALITIES_1YR", "IN,PK").strip()
+        nats_1yr = [n.strip().upper() for n in raw_nats.split(",") if n.strip()]
+
         return cls(
             interpol_base_url=os.getenv(
                 "INTERPOL_BASE_URL", "https://ws-public.interpol.int"
@@ -21,6 +43,9 @@ class FetcherConfig:
             fetch_interval_seconds=int(
                 os.getenv("INTERPOL_FETCH_INTERVAL_SECONDS", "300")
             ),
+            use_mock_data=_bool_env("INTERPOL_USE_MOCK_DATA", "false"),
+            fetch_all=_bool_env("INTERPOL_FETCH_ALL", "true"),
+            fetch_extended=_bool_env("INTERPOL_FETCH_EXTENDED", "false"),
             rabbitmq_host=os.getenv("RABBITMQ_HOST", "rabbitmq"),
             rabbitmq_port=int(os.getenv("RABBITMQ_PORT", "5672")),
             rabbitmq_queue_name=os.getenv(
@@ -28,5 +53,13 @@ class FetcherConfig:
             ),
             rabbitmq_user=os.getenv("RABBITMQ_USER", "guest"),
             rabbitmq_password=os.getenv("RABBITMQ_PASSWORD", "guest"),
+            # Yeni alanlar
+            enable_pass_age_0_9=_bool_env("ENABLE_PASS_AGE_0_9", "true"),
+            enable_pass_in_pk_1yr=_bool_env("ENABLE_PASS_IN_PK_1YR", "true"),
+            very_high_nationalities_1yr=nats_1yr,
+            age_1yr_min=int(os.getenv("AGE_1YR_MIN", "10")),
+            age_1yr_max=int(os.getenv("AGE_1YR_MAX", "99")),
+            request_delay_seconds=float(os.getenv("REQUEST_DELAY_SECONDS", "1.5")),
+            state_file_path=os.getenv("STATE_FILE_PATH", "/data/scan_state.json"),
         )
 
