@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 
-from flask import Flask, render_template, request, jsonify
+import requests as _requests
+from flask import Flask, render_template, request, jsonify, send_file
 
 from .config import WebConfig
 from .consumer import QueueConsumer
@@ -13,6 +15,45 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
 logger = logging.getLogger("web")
+
+# ------------------------------------------------------------------ #
+#  Photo proxy — singleton requests.Session with Interpol warmup      #
+# ------------------------------------------------------------------ #
+_INTERPOL_BASE = "https://ws-public.interpol.int"
+_PHOTO_CACHE_DIR = os.getenv("PHOTO_CACHE_DIR", "/data/photos")
+_photo_session: _requests.Session | None = None
+
+
+def _get_photo_session() -> _requests.Session:
+    """
+    Lazily create (and warm up) a requests.Session for fetching Interpol photos.
+
+    The warmup GET to interpol.int sets the browser-like cookies that the
+    API expects, mirroring what InterpolClient does in the fetcher.
+    """
+    global _photo_session
+    if _photo_session is None:
+        s = _requests.Session()
+        s.headers.update({
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": "https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices",
+            "Sec-Fetch-Dest": "image",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Site": "same-site",
+        })
+        try:
+            s.get("https://www.interpol.int/", timeout=10)
+            logger.info("Photo proxy session warmed up")
+        except Exception as exc:
+            logger.warning("Photo session warmup failed (proceeding anyway): %s", exc)
+        _photo_session = s
+    return _photo_session
 
 
 def create_app() -> Flask:
@@ -121,6 +162,66 @@ def create_app() -> Flask:
         finally:
             session.close()
         return jsonify({"total": total, "alarms": alarms})
+
+    @app.route("/api/photo/<path:entity_id>")
+    def photo_proxy(entity_id: str):
+        """
+        Image proxy for Interpol red notice photos.
+
+        Flow:
+          1. Sanitise entity_id to dash format (e.g. '1993-27493').
+          2. Return the file from disk cache (/data/photos/) if already saved.
+          3. Otherwise look up the stored thumbnail_url in the DB; if absent,
+             derive it from the entity_id (Interpol's standard URL pattern).
+          4. Fetch the image from Interpol using a session with warmup cookies.
+          5. Persist to disk cache so subsequent requests are instant.
+          6. Return image bytes with the correct Content-Type.
+
+        Returns HTTP 404 (empty body) when Interpol has no photo for this entity.
+        """
+        # Normalise: slash-format entity_ids from DB → dash-format for URL/file
+        safe = entity_id.replace("/", "-").replace("..", "").strip("/")
+        cache_path = os.path.join(_PHOTO_CACHE_DIR, safe + ".jpg")
+
+        # ── 1. Serve from disk cache ──────────────────────────────────────────
+        if os.path.isfile(cache_path):
+            return send_file(cache_path, mimetype="image/jpeg")
+
+        # ── 2. Determine source URL ──────────────────────────────────────────
+        # Try to get the stored URL from the DB first (most accurate)
+        db_session = SessionFactory()
+        try:
+            # Entity is stored in DB with slash format
+            slash_id = safe.replace("-", "/", 1)  # only first dash is the year separator
+            notice = (
+                db_session.query(Notice)
+                .filter(Notice.entity_id == slash_id)
+                .one_or_none()
+            )
+            thumbnail_url = (
+                notice.thumbnail_url if notice and notice.thumbnail_url
+                else f"{_INTERPOL_BASE}/notices/v1/red/{safe}/images/1/thumbnail"
+            )
+        finally:
+            db_session.close()
+
+        # ── 3. Fetch from Interpol ────────────────────────────────────────────
+        try:
+            resp = _get_photo_session().get(thumbnail_url, timeout=15)
+            if resp.status_code == 200 and resp.content:
+                os.makedirs(_PHOTO_CACHE_DIR, exist_ok=True)
+                with open(cache_path, "wb") as fh:
+                    fh.write(resp.content)
+                logger.info("Cached photo for %s (%d bytes)", safe, len(resp.content))
+                return send_file(
+                    cache_path,
+                    mimetype=resp.headers.get("Content-Type", "image/jpeg"),
+                )
+            logger.debug("No photo for %s — Interpol returned %d", safe, resp.status_code)
+        except Exception as exc:
+            logger.warning("Photo fetch failed for %s: %s", safe, exc)
+
+        return ("", 404)
 
     return app
 

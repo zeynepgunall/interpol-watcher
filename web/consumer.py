@@ -71,6 +71,7 @@ class QueueConsumer:
                     nationality=payload.get("nationality"),
                     all_nationalities=payload.get("all_nationalities"),
                     arrest_warrant=payload.get("arrest_warrant"),
+                    thumbnail_url=payload.get("thumbnail_url"),
                 )
                 session.add(notice)
                 logger.info("Inserted new notice %s", entity_id)
@@ -82,6 +83,9 @@ class QueueConsumer:
                 notice.nationality = payload.get("nationality")
                 notice.all_nationalities = payload.get("all_nationalities")
                 notice.arrest_warrant = payload.get("arrest_warrant")
+                # Update thumbnail only if we received a better URL
+                if payload.get("thumbnail_url"):
+                    notice.thumbnail_url = payload.get("thumbnail_url")
                 notice.is_updated = True
                 logger.info("Updated existing notice %s", entity_id)
 

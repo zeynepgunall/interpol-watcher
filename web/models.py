@@ -39,6 +39,7 @@ class Notice(Base):
     nationality = Column(String(255), nullable=True)          # birincil uyruk
     all_nationalities = Column(String(1024), nullable=True)   # tüm uyruklar, örn. "DE,TR"
     arrest_warrant = Column(String(1024), nullable=True)
+    thumbnail_url = Column(String(512), nullable=True)    # Interpol _links.thumbnail.href (may be None)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
@@ -49,5 +50,34 @@ class Notice(Base):
 def create_session_factory(config: WebConfig):
     engine = create_engine(config.database_url, echo=False, future=True)
     Base.metadata.create_all(engine)
+    _ensure_columns(engine)
     return sessionmaker(bind=engine, expire_on_commit=False, class_=Session)
+
+
+def _ensure_columns(engine) -> None:
+    """
+    Lightweight schema migration: add any columns that exist in the ORM model
+    but are absent from the live table (e.g. when upgrading an existing volume).
+
+    Uses raw PRAGMA so it works without a full Alembic setup.
+    Only handles new nullable columns — not renames or type changes.
+    """
+    import sqlalchemy
+
+    with engine.connect() as conn:
+        # Only implemented for SQLite; skip for other engines
+        if not engine.dialect.name == "sqlite":
+            return
+        result = conn.execute(sqlalchemy.text("PRAGMA table_info(notices)"))
+        existing = {row[1] for row in result.fetchall()}
+
+    additions = {
+        "all_nationalities": "TEXT DEFAULT NULL",
+        "thumbnail_url":     "VARCHAR(512) DEFAULT NULL",
+    }
+    with engine.connect() as conn:
+        for col, coldef in additions.items():
+            if col not in existing:
+                conn.execute(sqlalchemy.text(f"ALTER TABLE notices ADD COLUMN {col} {coldef}"))
+                conn.commit()
 

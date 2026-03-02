@@ -435,10 +435,9 @@
 
       <div class="card-photo">
         <img
-          src="https://ws-public.interpol.int/notices/v1/red/{{ eid_dash }}/images/1/thumbnail"
+          src="/api/photo/{{ eid_dash }}"
           alt="{{ notice.forename }} {{ notice.name }}"
           loading="lazy"
-          referrerpolicy="no-referrer"
           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <div class="photo-placeholder">
           <div class="ph-box">?</div>

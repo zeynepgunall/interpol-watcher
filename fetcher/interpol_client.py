@@ -21,6 +21,7 @@ class RedNotice:
     nationality: str | None          # birincil uyruk (nationalities[0])
     all_nationalities: str | None    # tüm uyruklar virgülle ayrılmış, örn. "DE,TR"
     arrest_warrant: str | None
+    thumbnail_url: str | None = None  # Interpol API _links.thumbnail.href
 
     @classmethod
     def from_api_item(cls, item: Dict[str, Any]) -> "RedNotice":
@@ -37,6 +38,15 @@ class RedNotice:
             arrest_warrants[0].get("charge") if isinstance(arrest_warrants, list) and arrest_warrants else None
         )
 
+        # Extract thumbnail URL from HATEOAS links if Interpol provides it
+        thumbnail_url = (
+            item.get("_links", {}).get("thumbnail", {}).get("href")
+            or item.get("_links", {}).get("self", {}).get("href")  # fallback: derive later from entity_id
+        )
+        # Normalise: keep only if it looks like an actual thumbnail href
+        if thumbnail_url and "/thumbnail" not in thumbnail_url:
+            thumbnail_url = None
+
         return cls(
             entity_id=entity_id,
             name=item.get("name"),
@@ -45,6 +55,7 @@ class RedNotice:
             nationality=nationality,
             all_nationalities=all_nat or None,
             arrest_warrant=arrest_warrant,
+            thumbnail_url=thumbnail_url,
         )
 
 
