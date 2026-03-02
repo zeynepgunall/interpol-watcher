@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List
 
 
@@ -20,16 +20,13 @@ class FetcherConfig:
     rabbitmq_user: str
     rabbitmq_password: str
 
-    # --- Yeni pass kontrolleri ---
-    enable_pass_age_0_9: bool        # ENABLE_PASS_AGE_0_9      (default: true)
-    enable_pass_in_pk_1yr: bool      # ENABLE_PASS_IN_PK_1YR    (default: true)
-    very_high_nationalities_1yr: List[str]  # VERY_HIGH_NATIONALITIES_1YR (default: "IN,PK")
-    age_1yr_min: int                 # AGE_1YR_MIN               (default: 10)
-    age_1yr_max: int                 # AGE_1YR_MAX               (default: 99)
-
-    # --- Rate-limit & state ---
-    request_delay_seconds: float     # REQUEST_DELAY_SECONDS     (default: 1.5)
-    state_file_path: str             # STATE_FILE_PATH           (default: /data/scan_state.json)
+    enable_pass_age_0_9: bool
+    enable_pass_in_pk_1yr: bool
+    very_high_nationalities_1yr: List[str]
+    age_1yr_min: int
+    age_1yr_max: int
+    request_delay_seconds: float
+    state_file_path: str
 
     @classmethod
     def from_env(cls) -> "FetcherConfig":
@@ -53,7 +50,6 @@ class FetcherConfig:
             ),
             rabbitmq_user=os.getenv("RABBITMQ_USER", "guest"),
             rabbitmq_password=os.getenv("RABBITMQ_PASSWORD", "guest"),
-            # Yeni alanlar
             enable_pass_age_0_9=_bool_env("ENABLE_PASS_AGE_0_9", "true"),
             enable_pass_in_pk_1yr=_bool_env("ENABLE_PASS_IN_PK_1YR", "true"),
             very_high_nationalities_1yr=nats_1yr,

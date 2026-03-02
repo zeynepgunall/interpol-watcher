@@ -28,6 +28,8 @@ class QueueConsumer:
     real-time notification to connected browser clients.
     """
 
+    _on_change = None  # class-level default; overridden per-instance in __init__
+
     def __init__(self, config: WebConfig, on_change=None) -> None:
         self._config = config
         self._on_change = on_change

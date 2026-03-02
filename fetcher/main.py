@@ -1,17 +1,3 @@
-"""
-fetcher/main.py
----------------
-Entry point for Container A.
-
-FetchOrchestrator owns the fetch-and-publish lifecycle:
-  - Reads configuration from FetcherConfig (all values come from env vars).
-  - Selects the fetch strategy: mock / extended / full-scan / latest-only.
-  - Delegates HTTP concerns to InterpolClient.
-  - Delegates queue publishing to QueuePublisher.
-  - Loops indefinitely; any per-cycle error is caught and logged so the
-    process never exits unexpectedly.
-"""
-
 import logging
 import time
 
@@ -41,10 +27,6 @@ class FetchOrchestrator:
         self._client = client
         self._publisher = publisher
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def run_forever(self) -> None:
         """
         Main loop: fetch → publish → sleep → repeat.
@@ -65,10 +47,6 @@ class FetchOrchestrator:
                 logger.exception("Error during fetch/publish cycle: %s", exc)
 
             time.sleep(self._config.fetch_interval_seconds)
-
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
 
     def _fetch_cycle(self) -> list[RedNotice]:
         """Select the correct fetch strategy and return a list of notices."""
@@ -128,10 +106,6 @@ class FetchOrchestrator:
             ),
         ]
 
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def _configure_logging() -> None:
     logging.basicConfig(
