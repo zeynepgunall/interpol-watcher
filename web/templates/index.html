@@ -8,237 +8,187 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:         #f0ede8;
-      --surface:    #ffffff;
-      --border:     #d4cfc8;
-      --border-mid: #b5afa6;
-      --ink:        #1c1c1a;
-      --ink-mid:    #4a4844;
-      --ink-soft:   #7a7872;
-      --red:        #b01c1c;
-      --red-faint:  rgba(176,28,28,0.08);
-      --mono:       "Courier New", Courier, monospace;
-      --serif:      Georgia, "Times New Roman", serif;
+      --bg:      #0d0d0d;
+      --surface: #161616;
+      --line:    #2a2a2a;
+      --text:    #e8e8e8;
+      --mid:     #999;
+      --dim:     #555;
+      --red:     #cc0000;
+      --red-dim: #7a1212;
+      --font:    Georgia, "Times New Roman", Times, serif;
+      --mono:    "Courier New", Courier, monospace;
     }
 
     body {
-      font-family: var(--serif);
+      font-family: var(--font);
       background: var(--bg);
-      color: var(--ink);
-      min-height: 100vh;
+      color: var(--text);
       font-size: 14px;
+      line-height: 1.5;
     }
 
-    /* â”€â”€ HEADER â”€â”€ */
+    /* HEADER */
     header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0.75rem 1.25rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--red);
+      padding: 1rem 1.5rem 0.75rem;
       position: sticky;
       top: 0;
       z-index: 10;
     }
-
-    .header-row {
+    .title-row {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
       flex-wrap: wrap;
+      margin-bottom: 0.6rem;
     }
-
-    .brand { display: flex; flex-direction: column; line-height: 1.3; }
-    .brand-name {
-      font-family: var(--mono);
-      font-size: 0.78rem;
+    h1 {
+      font-family: var(--font);
+      font-size: 1.1rem;
       font-weight: bold;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--ink);
+      color: var(--text);
     }
-    .brand-sub {
+    h1 span { color: var(--red); }
+    .stats {
       font-family: var(--mono);
-      font-size: 0.62rem;
-      color: var(--ink-soft);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .header-meta {
+      font-size: 0.7rem;
+      color: var(--mid);
       display: flex;
-      align-items: center;
-      gap: 0.9rem;
+      gap: 1.25rem;
       flex-wrap: wrap;
     }
-    .meta-pill {
-      font-family: var(--mono);
-      font-size: 0.65rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--ink-soft);
-    }
-    .meta-pill strong { color: var(--ink); }
-    .meta-pill.alarm  { color: var(--red); font-weight: bold; }
+    .stats .alarm { color: var(--red); font-weight: bold; }
 
-    /* â”€â”€ SEARCH BAR â”€â”€ */
-    .search-bar {
+    /* SEARCH */
+    .search {
       display: flex;
       align-items: center;
       gap: 0.4rem;
       flex-wrap: wrap;
-      margin-top: 0.55rem;
-      padding-top: 0.55rem;
-      border-top: 1px solid var(--border);
     }
-    .search-bar input[type=text],
-    .search-bar select {
+    .search input,
+    .search select {
       font-family: var(--mono);
-      font-size: 0.75rem;
-      background: var(--bg);
-      border: 1px solid var(--border-mid);
-      border-radius: 3px;
-      color: var(--ink);
+      font-size: 0.72rem;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--text);
       padding: 0.28rem 0.55rem;
       outline: none;
     }
-    .search-bar input[type=text] { width: 220px; }
-    .search-bar input[type=text]:focus,
-    .search-bar select:focus { border-color: var(--ink-mid); }
-    .search-bar input::placeholder { color: var(--ink-soft); font-style: italic; }
-    .btn-search {
+    .search input { width: 220px; }
+    .search input::placeholder { color: var(--dim); }
+    .search input:focus,
+    .search select:focus { border-color: var(--mid); }
+    .search option { background: var(--surface); }
+    .search button {
       font-family: var(--mono);
-      font-size: 0.68rem;
+      font-size: 0.7rem;
       font-weight: bold;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      background: var(--ink);
+      background: var(--red);
       color: #fff;
       border: none;
-      border-radius: 3px;
-      padding: 0.3rem 0.8rem;
+      padding: 0.3rem 0.9rem;
       cursor: pointer;
     }
-    .btn-search:hover { background: var(--ink-mid); }
-    .btn-clear {
+    .search button:hover { background: var(--red-dim); }
+    .search a {
       font-family: var(--mono);
-      font-size: 0.65rem;
-      color: var(--ink-soft);
+      font-size: 0.68rem;
+      color: var(--dim);
       text-decoration: underline;
-      text-underline-offset: 2px;
     }
-    .btn-clear:hover { color: var(--ink); }
+    .search a:hover { color: var(--mid); }
 
-    /* â”€â”€ PAGE WRAP â”€â”€ */
+    /* WRAP */
     .wrap {
       max-width: 1400px;
       margin: 0 auto;
       padding: 1.25rem 1.25rem 4rem;
     }
 
-    /* â”€â”€ CARD GRID â”€â”€ */
+    /* GRID */
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 1px;
+      border: 1px solid var(--line);
     }
 
-    /* â”€â”€ CARD â”€â”€ */
+    /* CARD */
     .card {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 0.75rem 0.85rem 0.7rem 1rem;
+      padding: 0.75rem 0.85rem;
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
-      position: relative;
-      transition: border-color 0.12s;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
     }
-    .card:hover { border-color: var(--border-mid); }
+    .card:hover { background: #1c1c1c; }
+    .card.is-alarm { border-top: 2px solid var(--red); }
 
-    .card.is-alarm {
-      border-color: var(--red);
-      background: #fffafa;
-      animation: pulse 2.6s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: none; }
-      50%       { box-shadow: 0 0 0 4px rgba(176,28,28,0.10); }
-    }
-
-    /* left accent bar */
-    .card::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 3px;
-      border-radius: 5px 0 0 5px;
-      background: var(--border);
-    }
-    .card.is-alarm::before { background: var(--red); }
-
-    /* â”€â”€ ALARM CHIP â”€â”€ */
-    .alarm-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.2rem;
+    /* ALARM BADGE */
+    .alarm-badge {
       font-family: var(--mono);
       font-size: 0.6rem;
       font-weight: bold;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--red);
-      border: 1.5px solid var(--red);
-      border-radius: 3px;
-      padding: 0.06rem 0.32rem;
-      background: var(--red-faint);
+      border: 1px solid var(--red);
+      padding: 0.05rem 0.3rem;
+      display: inline-block;
+      margin-bottom: 0.45rem;
       width: fit-content;
-      margin-bottom: 0.2rem;
     }
 
-    /* â”€â”€ NAME â”€â”€ */
-    .card-name {
-      font-family: var(--serif);
-      font-size: 0.88rem;
+    /* NAME */
+    .name {
+      font-family: var(--font);
+      font-size: 0.92rem;
       font-weight: bold;
-      color: var(--ink);
-      line-height: 1.35;
-      padding-bottom: 0.38rem;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 0.05rem;
+      color: var(--text);
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.35rem;
     }
-    .card-name.unknown {
-      font-weight: normal;
-      font-style: italic;
-      color: var(--ink-soft);
-    }
+    .name.unknown { font-weight: normal; font-style: italic; color: var(--dim); }
 
-    /* â”€â”€ FIELDS â”€â”€ */
-    .field {
+    /* FIELDS */
+    .row {
       display: flex;
-      align-items: baseline;
-      gap: 0.35rem;
-      font-size: 0.71rem;
-      line-height: 1.8;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      line-height: 1.9;
+      border-bottom: 1px solid #1e1e1e;
     }
-    .field-key {
+    .row:last-of-type { border-bottom: none; }
+    .lbl {
       font-family: var(--mono);
-      font-size: 0.57rem;
+      font-size: 0.58rem;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--ink-soft);
-      width: 52px;
+      letter-spacing: 0.06em;
+      color: var(--dim);
+      width: 48px;
       flex-shrink: 0;
+      padding-top: 0.1rem;
     }
-    .field-val {
-      color: var(--ink-mid);
-      font-family: var(--serif);
+    .val {
+      font-family: var(--font);
+      color: var(--mid);
       flex: 1;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .field-val.multiline {
+    .val.wrap2 {
       white-space: normal;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -247,105 +197,93 @@
       line-height: 1.4;
     }
 
-    /* â”€â”€ CARD FOOTER â”€â”€ */
-    .card-foot {
-      margin-top: auto;
-      padding-top: 0.4rem;
-      border-top: 1px solid var(--border);
-      margin-top: 0.3rem;
+    /* FOOTER */
+    .foot {
+      padding-top: 0.35rem;
+      margin-top: 0.25rem;
+      border-top: 1px solid var(--line);
     }
     .ref {
       font-family: var(--mono);
       font-size: 0.57rem;
-      color: var(--ink-soft);
-      letter-spacing: 0.03em;
+      color: var(--dim);
     }
     .ts {
       font-family: var(--mono);
       font-size: 0.55rem;
-      color: var(--ink-soft);
-      line-height: 1.7;
-      margin-top: 0.1rem;
+      color: var(--dim);
+      line-height: 1.8;
     }
-    .ts-alarm { color: var(--red); font-weight: bold; }
+    .ts-alarm { color: var(--red); }
 
-    /* â”€â”€ EMPTY STATE â”€â”€ */
+    /* EMPTY */
     .empty {
       text-align: center;
       padding: 5rem 1rem;
+      color: var(--dim);
     }
-    .empty-title {
+    .empty h2 {
       font-family: var(--mono);
       font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--ink-soft);
-      margin-bottom: 0.6rem;
+      letter-spacing: 0.14em;
+      margin-bottom: 0.5rem;
+      color: var(--mid);
     }
-    .empty p { font-size: 0.85rem; color: var(--ink-mid); }
-    .empty a  { color: var(--ink); }
+    .empty a { color: var(--red); }
 
-    /* â”€â”€ PAGINATION â”€â”€ */
-    .pagination {
+    /* PAGINATION */
+    .pages {
       display: flex;
       justify-content: center;
-      align-items: center;
       margin-top: 2rem;
+      border: 1px solid var(--line);
       width: fit-content;
       margin-left: auto;
       margin-right: auto;
-      border: 1px solid var(--border-mid);
-      border-radius: 4px;
       overflow: hidden;
-      background: var(--surface);
     }
-    .pagination a {
+    .pages a {
       font-family: var(--mono);
       font-size: 0.72rem;
-      padding: 0.38rem 0.7rem;
-      color: var(--ink-mid);
+      padding: 0.38rem 0.75rem;
+      color: var(--mid);
       text-decoration: none;
-      border-right: 1px solid var(--border);
-      transition: background 0.1s;
+      border-right: 1px solid var(--line);
+      background: var(--surface);
     }
-    .pagination a:last-child { border-right: none; }
-    .pagination a:hover      { background: var(--bg); color: var(--ink); }
-    .pagination a.current    { background: var(--ink); color: #fff; font-weight: bold; }
-    .pagination a.disabled   { color: var(--border-mid); pointer-events: none; }
+    .pages a:last-child { border-right: none; }
+    .pages a:hover     { background: #1e1e1e; color: var(--text); }
+    .pages a.cur       { background: var(--red); color: #fff; font-weight: bold; }
+    .pages a.off       { color: var(--dim); pointer-events: none; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="header-row">
-    <div class="brand">
-      <span class="brand-name">Interpol â€” Red Notice Register</span>
-      <span class="brand-sub">Automated Surveillance Feed</span>
-    </div>
-    <div class="header-meta">
-      <span class="meta-pill">Records <strong>{{ total }}</strong></span>
+  <div class="title-row">
+    <h1>Interpol &mdash; <span>Red Notice</span> Register</h1>
+    <div class="stats">
+      <span>Records: <strong>{{ total }}</strong></span>
       {% if total_alarms > 0 %}
-        <span class="meta-pill alarm">&#9888; Alarms <strong>{{ total_alarms }}</strong></span>
+        <span class="alarm">&#9888; Alarms: {{ total_alarms }}</span>
       {% endif %}
       {% if total_pages > 1 %}
-        <span class="meta-pill">Page <strong>{{ page }}</strong> / <strong>{{ total_pages }}</strong></span>
+        <span>Page {{ page }} / {{ total_pages }}</span>
       {% endif %}
     </div>
   </div>
-
-  <div class="search-bar">
-    <form style="display:contents" method="get" action="/">
-      <input type="text" name="q" placeholder="surname or forenameâ€¦" value="{{ q }}">
-      <select name="nat">
-        <option value="">All nationalities</option>
-        {% for n in nationalities %}
-          <option value="{{ n }}" {% if n == nat %}selected{% endif %}>{{ n }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn-search">Search</button>
-      {% if q or nat %}<a href="/" class="btn-clear">Clear</a>{% endif %}
-    </form>
-  </div>
+  <form class="search" method="get" action="/">
+    <input type="text" name="q" placeholder="surname or forename&hellip;" value="{{ q }}">
+    <select name="nat">
+      <option value="">All nationalities</option>
+      {% for n in nationalities %}
+        <option value="{{ n }}" {% if n == nat %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Search</button>
+    {% if q or nat %}<a href="/">Clear</a>{% endif %}
+  </form>
 </header>
 
 <div class="wrap">
@@ -355,48 +293,46 @@
     <div class="card{% if notice.is_updated %} is-alarm{% endif %}">
 
       {% if notice.is_updated %}
-        <div class="alarm-chip">&#9888; Alarm</div>
+        <div class="alarm-badge">&#9888; Alarm</div>
       {% endif %}
 
       {% if notice.name or notice.forename %}
-        <div class="card-name">
+        <div class="name">
           {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
           {% elif notice.name %}{{ notice.name }}
           {% else %}{{ notice.forename }}{% endif %}
         </div>
       {% else %}
-        <div class="card-name unknown">â€” Unknown â€”</div>
+        <div class="name unknown">&mdash; Unknown &mdash;</div>
       {% endif %}
 
       {% if notice.date_of_birth %}
-      <div class="field">
-        <span class="field-key">D.O.B.</span>
-        <span class="field-val">{{ notice.date_of_birth }}</span>
+      <div class="row">
+        <span class="lbl">D.O.B.</span>
+        <span class="val">{{ notice.date_of_birth }}</span>
       </div>
       {% endif %}
 
       {% if notice.nationality %}
-      <div class="field">
-        <span class="field-key">Nat.</span>
-        <span class="field-val">
+      <div class="row">
+        <span class="lbl">Nat.</span>
+        <span class="val">
           <span class="flag" data-code="{{ notice.nationality }}"></span>{{ notice.nationality }}
         </span>
       </div>
       {% endif %}
 
-      <div class="field">
-        <span class="field-key">Charge</span>
-        <span class="field-val multiline">
-          {{ notice.arrest_warrant if notice.arrest_warrant else 'â€”' }}
-        </span>
+      <div class="row">
+        <span class="lbl">Charge</span>
+        <span class="val wrap2">{{ notice.arrest_warrant if notice.arrest_warrant else '&mdash;' }}</span>
       </div>
 
-      <div class="card-foot">
+      <div class="foot">
         <div class="ref">{{ notice.entity_id }}</div>
         <div class="ts">
-          {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else 'â€”' }}
+          {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else '&mdash;' }}
           {% if notice.is_updated %}
-          <br><span class="ts-alarm">&#9888; {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else 'â€”' }}</span>
+          <br><span class="ts-alarm">&#9888; {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else '&mdash;' }}</span>
           {% endif %}
         </div>
       </div>
@@ -406,25 +342,25 @@
   </div>
 
   {% if total_pages > 1 %}
-  <nav class="pagination">
+  <nav class="pages">
     <a href="?page=1&q={{ q }}&nat={{ nat }}"
-       {% if page == 1 %}class="disabled"{% endif %}>Â«</a>
+       {% if page == 1 %}class="off"{% endif %}>&#171;</a>
     <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}"
-       {% if page == 1 %}class="disabled"{% endif %}>â€¹</a>
+       {% if page == 1 %}class="off"{% endif %}>&#8249;</a>
     {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
       <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}"
-         class="{% if p == page %}current{% endif %}">{{ p }}</a>
+         class="{% if p == page %}cur{% endif %}">{{ p }}</a>
     {% endfor %}
     <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}"
-       {% if page == total_pages %}class="disabled"{% endif %}>â€º</a>
+       {% if page == total_pages %}class="off"{% endif %}>&#8250;</a>
     <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}"
-       {% if page == total_pages %}class="disabled"{% endif %}>Â»</a>
+       {% if page == total_pages %}class="off"{% endif %}>&#187;</a>
   </nav>
   {% endif %}
 
   {% else %}
   <div class="empty">
-    <div class="empty-title">â€” No records found â€”</div>
+    <h2>&mdash; No records found &mdash;</h2>
     <p>
       {% if q or nat %}No entries match the current filter. <a href="/">Clear filter</a>
       {% else %}Feed is initializing. Records will appear once the fetcher completes ingestion.{% endif %}
@@ -437,11 +373,10 @@
   // Flag emoji from ISO-2 country code
   document.querySelectorAll('.flag[data-code]').forEach(el => {
     const c = el.dataset.code;
-    if (c && c.length === 2) {
+    if (c && c.length === 2)
       el.textContent = String.fromCodePoint(
         ...[...c.toUpperCase()].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0))
       ) + '\u00a0';
-    }
   });
 
   // Auto-refresh: poll /api/status every 30 s, reload only on change
