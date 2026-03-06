@@ -53,7 +53,7 @@ def _payload(**overrides) -> dict:
         "nationality": "US",
         "all_nationalities": "US,GB",
         "arrest_warrant": "Fraud",
-        "thumbnail_url": "https://example.com/photo.jpg",
+        "photo_url": "https://example.com/photo.jpg",
     }
     base.update(overrides)
     return base
@@ -101,9 +101,18 @@ def test_multiple_unique_payloads_all_inserted(service, session_factory):
 # UPDATE / ALARM path
 # ---------------------------------------------------------------------------
 
-def test_second_arrival_returns_updated(service):
+def test_second_arrival_same_data_returns_unchanged(service):
+    """Same payload twice with no field changes → UNCHANGED (not alarm)."""
     service.upsert(_payload())
     result = service.upsert(_payload())
+    assert result.outcome is UpsertOutcome.UNCHANGED
+    assert result.is_alarm is False
+
+
+def test_second_arrival_changed_data_returns_updated(service):
+    """Changed field on second arrival → UPDATED (alarm)."""
+    service.upsert(_payload())
+    result = service.upsert(_payload(name="SMITH"))
     assert result.outcome is UpsertOutcome.UPDATED
     assert result.is_alarm is True
 
@@ -145,18 +154,18 @@ def test_update_overwrites_all_fields(service, session_factory):
         session.close()
 
 
-def test_thumbnail_not_overwritten_if_absent_in_update(service, session_factory):
-    """If the update payload has no thumbnail_url, the original value is kept."""
-    service.upsert(_payload(thumbnail_url="https://original.com/photo.jpg"))
+def test_photo_url_not_overwritten_if_absent_in_update(service, session_factory):
+    """If the update payload has no photo_url, the original value is kept."""
+    service.upsert(_payload(photo_url="https://original.com/photo.jpg"))
 
-    payload_no_thumb = _payload()
-    del payload_no_thumb["thumbnail_url"]
-    service.upsert(payload_no_thumb)
+    payload_no_photo = _payload()
+    del payload_no_photo["photo_url"]
+    service.upsert(payload_no_photo)
 
     session = session_factory()
     try:
         notice = session.query(Notice).filter(Notice.entity_id == "2024/1111").one()
-        assert notice.thumbnail_url == "https://original.com/photo.jpg"
+        assert notice.photo_url == "https://original.com/photo.jpg"
     finally:
         session.close()
 

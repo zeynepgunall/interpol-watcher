@@ -3,10 +3,12 @@ from dataclasses import dataclass
 
 
 def _bool_env(key: str, default: str = "true") -> bool:
+    """Ortam değişkenini oku ve boolean'a çevir. '1','true','yes','y' → True, diğerleri → False."""
     return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _csv_env(key: str, default: str) -> list[str]:
+    """Ortam değişkenini virgülle ayrılmış liste olarak oku. Her değeri büyük harfe çevirir."""
     raw = os.getenv(key, default).strip()
     return [v.strip().upper() for v in raw.split(",") if v.strip()]
 
@@ -15,7 +17,6 @@ def _csv_env(key: str, default: str) -> list[str]:
 class FetcherConfig:
     interpol_base_url: str
     fetch_interval_seconds: int
-    use_mock_data: bool
     fetch_all: bool
     fetch_extended: bool
     rabbitmq_host: str
@@ -34,10 +35,10 @@ class FetcherConfig:
 
     @classmethod
     def from_env(cls) -> "FetcherConfig":
+        """Tüm ortam değişkenlerini okuyarak bir FetcherConfig nesnesi oluşturur. Eksik değerler için varsayılanları kullanır."""
         return cls(
             interpol_base_url=os.getenv("INTERPOL_BASE_URL", "https://ws-public.interpol.int"),
             fetch_interval_seconds=int(os.getenv("INTERPOL_FETCH_INTERVAL_SECONDS", "300")),
-            use_mock_data=_bool_env("INTERPOL_USE_MOCK_DATA", "false"),
             fetch_all=_bool_env("INTERPOL_FETCH_ALL", "true"),
             fetch_extended=_bool_env("INTERPOL_FETCH_EXTENDED", "false"),
             rabbitmq_host=os.getenv("RABBITMQ_HOST", "rabbitmq"),

@@ -46,3 +46,16 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local data and photos (too large for git)
+photos/
+data/
+
+# One-off helper scripts (contain cookies / local paths)
+download_photos.py
+browser_sync.js
+generate_js.py
+fetch_images_json.py
+fetch_all_pages.py
+photo_sync_server.py
+recovered_photos.json

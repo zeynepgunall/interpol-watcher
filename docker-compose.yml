@@ -10,6 +10,28 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: interpol_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-interpol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interpol123}
+      POSTGRES_DB: ${POSTGRES_DB:-interpol_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U interpol" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   fetcher:
     build:
@@ -17,11 +39,11 @@ services:
       dockerfile: fetcher/Dockerfile
     container_name: interpol_fetcher
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     environment:
       INTERPOL_BASE_URL: ${INTERPOL_BASE_URL:-https://ws-public.interpol.int}
       INTERPOL_FETCH_INTERVAL_SECONDS: ${INTERPOL_FETCH_INTERVAL_SECONDS:-300}
-      INTERPOL_USE_MOCK_DATA: ${INTERPOL_USE_MOCK_DATA:-false}
       INTERPOL_FETCH_ALL: ${INTERPOL_FETCH_ALL:-true}
       INTERPOL_FETCH_EXTENDED: ${INTERPOL_FETCH_EXTENDED:-false}
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
@@ -29,13 +51,12 @@ services:
       RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-interpol_red_notices}
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      # Extended pass controls
       ENABLE_PASS_AGE_0_9: ${ENABLE_PASS_AGE_0_9:-true}
       ENABLE_PASS_IN_PK_1YR: ${ENABLE_PASS_IN_PK_1YR:-true}
       VERY_HIGH_NATIONALITIES_1YR: ${VERY_HIGH_NATIONALITIES_1YR:-IN,PK}
       AGE_1YR_MIN: ${AGE_1YR_MIN:-10}
       AGE_1YR_MAX: ${AGE_1YR_MAX:-99}
-      REQUEST_DELAY_SECONDS: ${REQUEST_DELAY_SECONDS:-1.5}
+      REQUEST_DELAY_SECONDS: ${REQUEST_DELAY_SECONDS:-3.0}
       STATE_FILE_PATH: ${STATE_FILE_PATH:-/data/scan_state.json}
     volumes:
       - web_data:/data
@@ -46,7 +67,10 @@ services:
       dockerfile: web/Dockerfile
     container_name: interpol_web
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     ports:
       - "8000:8000"
     environment:
@@ -56,9 +80,10 @@ services:
       RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-interpol_red_notices}
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/notices.db}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://interpol:interpol123@postgres:5432/interpol_db}
     volumes:
       - web_data:/data
 
 volumes:
   web_data:
+  pg_data:

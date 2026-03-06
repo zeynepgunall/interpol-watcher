@@ -1,35 +1,35 @@
 from __future__ import annotations
-
 import logging
-
-from flask import Flask, render_template, request, jsonify, send_file, Response
-
+from flask import Flask, render_template, request, jsonify, Response, send_file
 from .config import WebConfig
 from .consumer import QueueConsumer
 from .models import Notice, create_session_factory
-from .photo import PhotoProxy
+from .photo import photo_exists, photo_path, PLACEHOLDER_SVG, start_backfill_thread
 from .sse import notify as _sse_notify, stream_generator
 
 logger = logging.getLogger(__name__)
 
 
-
 def create_app() -> Flask:
-    # Guard prevents double-init when create_app is called multiple times in tests.
     if not logging.root.handlers:
         logging.basicConfig(
             level=logging.INFO,
-            format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+            format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
         )
 
     config = WebConfig.from_env()
     SessionFactory = create_session_factory(config)
-    proxy = PhotoProxy(SessionFactory)
 
     app = Flask(__name__, template_folder="templates")
 
+    # RabbitMQ consumer'ı arka planda başlat (daemon thread)
     consumer = QueueConsumer(config, on_change=_sse_notify)
     consumer.start_in_thread()
+
+    # Eksik fotoğrafları arka planda indir (bir kez çalışır)
+    start_backfill_thread(SessionFactory, delay=1.5)
+
+    # ── ROUTES ──────────────────────────────────────────────────────────────────
 
     @app.route("/")
     def index():
@@ -47,13 +47,12 @@ def create_app() -> Flask:
                     Notice.name.ilike(like) | Notice.forename.ilike(like)
                 )
             if nat:
-                # match on either primary nationality or the comma-separated all_nationalities string
                 query = query.filter(
-                    (Notice.nationality == nat)
-                    | Notice.all_nationalities.ilike(f"%{nat}%")
+                    (Notice.nationality == nat) |
+                    Notice.all_nationalities.ilike(f"%{nat}%")
                 )
-
             total = query.count()
+            # Alarmlar (is_updated=True) en üstte gösterilir
             notices = (
                 query
                 .order_by(Notice.is_updated.desc(), Notice.created_at.desc())
@@ -69,11 +68,7 @@ def create_app() -> Flask:
                 .order_by(Notice.nationality)
                 .all()
             ]
-            total_alarms = (
-                session.query(Notice)
-                .filter(Notice.is_updated == True)  # noqa: E712
-                .count()
-            )
+            total_alarms = session.query(Notice).filter(Notice.is_updated == True).count()
         finally:
             session.close()
 
@@ -93,6 +88,7 @@ def create_app() -> Flask:
 
     @app.route("/api/stream")
     def sse_stream():
+        """Server-Sent Events — tarayıcı bu endpoint'i dinler, değişiklikte sayfa yenilenir."""
         return Response(
             stream_generator(),
             mimetype="text/event-stream",
@@ -103,25 +99,33 @@ def create_app() -> Flask:
             },
         )
 
+    @app.route("/photos/<path:entity_id>")
+    def serve_photo(entity_id: str):
+        """Fotoğraf sunma: lokal dosya → Interpol redirect → placeholder SVG."""
+        # 1) Lokal dosya varsa serve et
+        if photo_exists(entity_id):
+            return send_file(
+                photo_path(entity_id),
+                mimetype="image/jpeg",
+                max_age=86400,
+            )
+        # 2) Fallback: placeholder SVG
+        return Response(PLACEHOLDER_SVG, mimetype="image/svg+xml",
+                        headers={"Cache-Control": "no-cache"})
+
     @app.route("/api/status")
     def api_status():
+        """SSE çalışmazsa polling fallback için kullanılır."""
         session = SessionFactory()
         try:
             total = session.query(Notice).count()
-            alarms = session.query(Notice).filter(Notice.is_updated == True).count()  # noqa: E712
+            alarms = session.query(Notice).filter(Notice.is_updated == True).count()
         finally:
             session.close()
         return jsonify({"total": total, "alarms": alarms})
 
-    @app.route("/api/photo/<path:entity_id>")
-    def photo_proxy(entity_id: str):
-        cache_path, status, mime = proxy.get(entity_id)
-        if status == 404:
-            return ("", 404)
-        return send_file(cache_path, mimetype=mime or "image/jpeg")
 
     return app
 
 
 app = create_app()
-

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass
@@ -13,10 +13,13 @@ class RedNotice:
     nationality: str | None
     all_nationalities: str | None
     arrest_warrant: str | None
-    thumbnail_url: str | None = None
+    photo_url: str | None = None
 
     @classmethod
-    def from_api_item(cls, item: Dict[str, Any]) -> "RedNotice":
+    def from_api_item(cls, item: dict[str, Any]) -> RedNotice:
+        """Interpol API'den gelen ham JSON sözlüğünü parse ederek RedNotice nesnesine dönüştürür.
+        Uyruk listesini virgülle birleştirir, tutuklama emrinin ilk charge alanını alır,
+        thumbnail linkini doğrular."""
         nationalities = item.get("nationalities") or []
         nationality = nationalities[0] if nationalities else item.get("nationality")
         all_nat = ",".join(nationalities) if nationalities else nationality or ""
@@ -30,10 +33,11 @@ class RedNotice:
             else None
         )
 
-        # Keep thumbnail only when Interpol actually provides a /thumbnail link
-        thumbnail_url = item.get("_links", {}).get("thumbnail", {}).get("href")
-        if thumbnail_url and "/thumbnail" not in thumbnail_url:
-            thumbnail_url = None
+        # Fotoğraf URL'sini _links.thumbnail.href'ten al (Interpol public JSON API)
+        # Yeni format: /images/{imageId}  (eski: /images/1/thumbnail — artık geçersiz)
+        photo_url = item.get("_links", {}).get("thumbnail", {}).get("href")
+        if photo_url and "/images/" not in photo_url:
+            photo_url = None
 
         return cls(
             entity_id=entity_id,
@@ -43,5 +47,5 @@ class RedNotice:
             nationality=nationality,
             all_nationalities=all_nat or None,
             arrest_warrant=arrest_warrant,
-            thumbnail_url=thumbnail_url,
+            photo_url=photo_url,
         )

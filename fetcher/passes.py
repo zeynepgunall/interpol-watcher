@@ -5,10 +5,10 @@ instead of repeated code blocks makes adding or removing a pass trivial.
 """
 from __future__ import annotations
 
-from typing import Dict, List, Any, Tuple
+from typing import Any
 
 # ISO 3166-1 alpha-2 country codes recognised by the Interpol API
-ALL_NATIONALITIES: List[str] = [
+ALL_NATIONALITIES: list[str] = [
     "AF","AL","DZ","AD","AO","AG","AR","AM","AU","AT","AZ","BS","BH","BD","BB",
     "BY","BE","BZ","BJ","BT","BO","BA","BW","BR","BN","BG","BF","BI","CV","KH",
     "CM","CA","CF","TD","CL","CN","CO","KM","CG","CD","CR","HR","CU","CY","CZ",
@@ -25,22 +25,23 @@ ALL_NATIONALITIES: List[str] = [
 ]
 
 # Nationalities whose notice count exceeds the 160-result API cap under broad filters
-HIGH_COUNT: List[str] = ["RU", "SV", "IN", "AR", "PK", "GT"]
+HIGH_COUNT: list[str] = ["RU", "SV", "IN", "AR", "PK", "GT"]
 
 # Subset of HIGH_COUNT where even 5-year age buckets can still hit the cap
-VERY_HIGH: List[str] = ["RU", "SV"]
+VERY_HIGH: list[str] = ["RU", "SV"]
 
-PassDef = Tuple[str, List[Dict[str, Any]]]
+PassDef = tuple[str, list[dict[str, Any]]]
 
 
-def _age_ranges(step: int, lo: int = 10, hi: int = 99) -> List[Tuple[int, int]]:
+def _age_ranges(step: int, lo: int = 10, hi: int = 99) -> list[tuple[int, int]]:
+    """Verilen adım büyüklüğüyle (min, max) yaş aralıkları listesi üretir. Örn: step=5 → (10,14),(15,19)..."""
     return [(a, min(a + step - 1, hi)) for a in range(lo, hi + 1, step)]
 
 
-def full_scan_passes() -> List[PassDef]:
+def full_scan_passes() -> list[PassDef]:
     """15-pass sweep used by fetch_all_red_notices."""
     age5 = _age_ranges(5)
-    passes: List[PassDef] = [
+    passes: list[PassDef] = [
         ("Pass 2 — nationality",
          [{"nationality": n} for n in ALL_NATIONALITIES]),
         ("Pass 3 — arrestWarrantCountryId",
@@ -75,6 +76,40 @@ def full_scan_passes() -> List[PassDef]:
         ("Pass 15 — F+allNat+highAW",
          [{"sexId": "F", "nationality": nat, "arrestWarrantCountryId": c}
           for c in HIGH_COUNT for nat in ALL_NATIONALITIES]),
+
+        # --- 1-year age buckets for VERY_HIGH countries (RU, SV) — 5yr overflows ---
+        ("Pass 16 — M+veryHigh+1yrAge",
+         [{"sexId": "M", "nationality": nat, "ageMin": a, "ageMax": a}
+          for nat in VERY_HIGH for a in range(10, 85)]),
+        ("Pass 17 — F+veryHigh+1yrAge",
+         [{"sexId": "F", "nationality": nat, "ageMin": a, "ageMax": a}
+          for nat in VERY_HIGH for a in range(10, 85)]),
+
+        # --- 1-year age buckets for remaining HIGH_COUNT (IN, AR, PK, GT) ---
+        ("Pass 18 — M+highCount+1yrAge",
+         [{"sexId": "M", "nationality": nat, "ageMin": a, "ageMax": a}
+          for nat in HIGH_COUNT if nat not in VERY_HIGH for a in range(10, 85)]),
+        ("Pass 19 — F+highCount+1yrAge",
+         [{"sexId": "F", "nationality": nat, "ageMin": a, "ageMax": a}
+          for nat in HIGH_COUNT if nat not in VERY_HIGH for a in range(10, 85)]),
+
+        # --- Global 1-year age for hot range (catches overflow in any nationality) ---
+        ("Pass 20 — M+1yrAge",
+         [{"sexId": "M", "ageMin": a, "ageMax": a} for a in range(18, 71)]),
+        ("Pass 21 — F+1yrAge",
+         [{"sexId": "F", "ageMin": a, "ageMax": a} for a in range(18, 71)]),
+
+        # --- sexId=U (unknown/unspecified gender) ---
+        ("Pass 22 — U",      [{"sexId": "U"}]),
+        ("Pass 22b — U+nat", [{"sexId": "U", "nationality": n} for n in ALL_NATIONALITIES]),
+
+        # --- Edge age ranges ---
+        ("Pass 23 — age0-9",    [{"ageMin": 0, "ageMax": 9}]),
+        ("Pass 23b — M+age0-9", [{"sexId": "M", "ageMin": 0, "ageMax": 9}]),
+        ("Pass 23c — F+age0-9", [{"sexId": "F", "ageMin": 0, "ageMax": 9}]),
+        ("Pass 24 — age100+",   [{"ageMin": 100, "ageMax": 120}]),
+        ("Pass 24b — M+age100+", [{"sexId": "M", "ageMin": 100, "ageMax": 120}]),
+        ("Pass 24c — F+age100+", [{"sexId": "F", "ageMin": 100, "ageMax": 120}]),
     ]
     return passes
 
@@ -82,10 +117,10 @@ def full_scan_passes() -> List[PassDef]:
 def extended_passes(
     enable_age_0_9: bool = True,
     enable_in_pk_1yr: bool = True,
-    nationalities_1yr: List[str] | None = None,
+    nationalities_1yr: list[str] | None = None,
     age_1yr_min: int = 10,
     age_1yr_max: int = 99,
-) -> List[PassDef]:
+) -> list[PassDef]:
     """Supplemental passes (13–B) run after the initial full scan."""
     if nationalities_1yr is None:
         nationalities_1yr = ["IN", "PK"]
@@ -93,7 +128,7 @@ def extended_passes(
     age5 = _age_ranges(5)
     age1_standard = [(i, i) for i in range(10, 85)]
 
-    passes: List[PassDef] = [
+    passes: list[PassDef] = [
         ("Pass 13 — F+nat+arrestWarrant",
          [{"sexId": "F", "nationality": nat, "arrestWarrantCountryId": c}
           for nat in HIGH_COUNT for c in ALL_NATIONALITIES]),

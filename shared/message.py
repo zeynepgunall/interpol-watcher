@@ -12,7 +12,7 @@ FIELDS: tuple[str, ...] = (
     "nationality",
     "all_nationalities",
     "arrest_warrant",
-    "thumbnail_url",
+    "photo_url",
 )
 
 

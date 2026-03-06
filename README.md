@@ -98,7 +98,6 @@ Tüm yapılandırma environment variable ile yönetilir. Koda dokunmadan `.env` 
 | `STATE_FILE_PATH` | `/data/scan_state.json` | Pass ilerleme dosyası |
 | `FETCH_EXTENDED` | `true` | Genişletilmiş çok-geçişli tarama |
 | `FETCH_ALL` | `false` | Tüm bültenleri tek geçişte çek |
-| `USE_MOCK_DATA` | `false` | Gerçek API yerine örnek veri |
 | `ENABLE_PASS_AGE_0_9` | `true` | 0-9 yaş aralığı passları aktif |
 | `ENABLE_PASS_IN_PK_1YR` | `true` | IN/PK uyruklu 1 yıllık passlar |
 | `VERY_HIGH_NATIONALITIES_1YR` | `IN,PK` | 1 yıllık pass için uyrukhttps |
@@ -133,6 +132,25 @@ Tüm yapılandırma environment variable ile yönetilir. Koda dokunmadan `.env` 
 | Zaman bilgisi | `ADDED:` / `ALARM:` | `created_at` ve `updated_at` UTC zamanları |
 
 Arayüzde **ad/soyad arama** ve **uyruk filtresi** bulunur. Sayfalama 200 kayıt/sayfa olarak çalışır. Üst bantta aktif alarm sayısı gösterilir.
+
+---
+
+## Fotoğraf Desteği
+
+Interpol public JSON API her notice için fotoğraf URL'si sağlar: `notice["_links"]["thumbnail"]["href"]`
+
+Bu URL `RedNotice.from_api_item()` tarafından `photo_url` alanına parse edilir ve tüm pipeline boyunca taşınır:
+
+| Katman | Alan | Açıklama |
+|---|---|---|
+| **Fetcher** | `RedNotice.photo_url` | API yanıtından parse edilir |
+| **Queue** | `photo_url` JSON key | `shared/message.py` FIELDS listesinde |
+| **DB** | `Notice.photo_url` | `VARCHAR(512)` sütunu |
+| **UI** | `<img src>` | Kart görünümünde gösterilir; yoksa `PhotoProxy` devreye girer |
+
+Fotoğraf yüklenemezse placeholder gösterilir. Mevcut `PhotoProxy` (`web/photo.py`) disk cache ile yedek olarak korunur.
+
+> Public Interpol JSON API kullanıldığı için fotoğraf erişimi hızlı ve stabildir.
 
 ---
 

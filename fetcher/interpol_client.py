@@ -4,13 +4,13 @@ import logging
 import random
 import re
 import time
-from typing import Any
+from typing import Any, Callable
 
 import requests
 
-from .notice import RedNotice  # noqa: F401 – re-exported for backward compat
+from .notice import RedNotice  # noqa: F401 – re-exported for tests
 from .passes import extended_passes, full_scan_passes
-from .scan_state import PassContext, ScanStateManager  # noqa: F401
+from .scan_state import ScanStateManager  # noqa: F401 – re-exported for tests
 
 logger = logging.getLogger(__name__)
 
@@ -19,15 +19,20 @@ _WARMUP_URLS = [
     "https://www.interpol.int/",
 ]
 _MAX_RETRIES = 3
-_RETRY_SLEEPS = (2.0, 5.0, 10.0)
+_RETRY_SLEEPS = (5.0, 15.0, 30.0)
 _API_PATH = "/notices/v1/red"
+_BAN_BACKOFF = [600, 1200, 1800]
+_RESULTS_PER_PAGE = 100
 
 
 class InterpolClient:
+    """Interpol public API ile iletişim kuran HTTP istemcisi."""
+
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
         self._session = requests.Session()
         self._warmed_up = False
+        self._ban_count = 0
 
     def _headers(self, *, json: bool = False) -> dict[str, str]:
         accept = (
@@ -51,29 +56,36 @@ class InterpolClient:
         }
 
     def _warmup(self) -> None:
+        """Interpol sitesine ön istek atarak oturumu ısındırır."""
         if self._warmed_up:
             return
+        time.sleep(random.uniform(2.0, 5.0))
         for url in _WARMUP_URLS:
             try:
                 resp = self._session.get(url, headers=self._headers(), timeout=20)
+                logger.info("Warmup %s → %d", url, resp.status_code)
                 if resp.status_code == 200:
                     self._warmed_up = True
+                    time.sleep(random.uniform(3.0, 6.0))
                     return
+                time.sleep(random.uniform(1.0, 3.0))
             except Exception as exc:
                 logger.warning("Warmup failed for %s: %s", url, exc)
         self._warmed_up = True
 
     def _reset_session(self) -> None:
-        """Drop the current session and re-warm after an IP ban (403)."""
-        logger.warning("403 received; resetting session and waiting 5 min")
+        """403 ban gelince session sıfırla, escalating backoff ile bekle."""
+        idx = min(self._ban_count, len(_BAN_BACKOFF) - 1)
+        wait = _BAN_BACKOFF[idx]
+        self._ban_count += 1
+        logger.warning("403 received (ban #%d); resetting session and waiting %d min", self._ban_count, wait // 60)
         self._session = requests.Session()
         self._warmed_up = False
-        time.sleep(300)
+        time.sleep(wait)
         self._warmup()
-        time.sleep(10)
+        time.sleep(random.uniform(10.0, 20.0))
 
     def _get(self, params: dict[str, Any]) -> tuple[bool, Any, int]:
-        """Single HTTP GET. Returns (ok, data, status)."""
         url = f"{self.base_url}{_API_PATH}"
         headers = {
             **self._headers(json=True),
@@ -83,11 +95,12 @@ class InterpolClient:
             "Sec-Fetch-Dest": "empty",
         }
         try:
-            resp = self._session.get(url, params=params, headers=headers, timeout=20)
+            resp = self._session.get(url, params=params, headers=headers, timeout=30)
             if resp.status_code == 403:
                 self._reset_session()
-                resp = self._session.get(url, params=params, headers=headers, timeout=20)
+                return False, None, 403
             if resp.status_code == 200:
+                self._ban_count = 0
                 return True, resp.json(), 200
             return False, None, resp.status_code
         except requests.exceptions.Timeout:
@@ -108,10 +121,12 @@ class InterpolClient:
             if status == 404:
                 return False, None, 404
             if attempt < _MAX_RETRIES:
-                sleep = _RETRY_SLEEPS[attempt - 1]
+                sleep = random.uniform(5.0, 15.0) if status == 403 else _RETRY_SLEEPS[attempt - 1]
                 logger.warning("Attempt %d failed (status=%d); retrying in %.1fs", attempt, status, sleep)
                 time.sleep(sleep)
         return False, None, -1
+
+    # ── PUBLIC API ──────────────────────────────────────────────────────────────
 
     def fetch_red_notices(self, result_per_page: int = 20) -> list[RedNotice]:
         self._warmup()
@@ -122,12 +137,17 @@ class InterpolClient:
         logger.info("Fetched %d notices", len(notices))
         return notices
 
-    def fetch_all_red_notices(self, request_delay: float = 1.5) -> list[RedNotice]:
+    def fetch_all_red_notices(
+        self,
+        request_delay: float = 1.5,
+        on_new: Callable[[list[RedNotice]], None] | None = None,
+        state_file: str = "/data/scan_state.json",
+    ) -> list[RedNotice]:
         self._warmup()
         seen: dict[str, RedNotice] = {}
-        self._collect_pages(seen, {}, request_delay)
+        state = ScanStateManager(state_file)
         for label, param_list in full_scan_passes():
-            self._run_pass(label, param_list, seen, request_delay)
+            self._run_pass(label, param_list, seen, request_delay, state=state, on_new=on_new)
         logger.info("Full scan complete: %d unique notices", len(seen))
         return list(seen.values())
 
@@ -140,6 +160,7 @@ class InterpolClient:
         age_1yr_min: int = 10,
         age_1yr_max: int = 99,
         state_file: str = "/data/scan_state.json",
+        on_new: Callable[[list[RedNotice]], None] | None = None,
     ) -> list[RedNotice]:
         self._warmup()
         seen: dict[str, RedNotice] = {}
@@ -152,7 +173,7 @@ class InterpolClient:
             age_1yr_max=age_1yr_max,
         )
         for label, param_list in passes:
-            self._run_pass(label, param_list, seen, request_delay, state=state)
+            self._run_pass(label, param_list, seen, request_delay, state=state, on_new=on_new)
         logger.info("Extended scan complete: %d unique notices", len(seen))
         return list(seen.values())
 
@@ -163,6 +184,7 @@ class InterpolClient:
         seen: dict[str, RedNotice],
         request_delay: float,
         state: ScanStateManager | None = None,
+        on_new: Callable[[list[RedNotice]], None] | None = None,
     ) -> None:
         if state and state.is_pass_done(label):
             logger.info("Skipping pass '%s' (already done)", label)
@@ -177,7 +199,7 @@ class InterpolClient:
                 continue
             if state and idx % 50 == 0:
                 state.mark_query_progress(label, idx)
-            self._collect_pages(seen, params, request_delay, pass_id=pass_id, combo=f"{idx + 1}/{total}")
+            self._collect_pages(seen, params, request_delay, pass_id=pass_id, combo=f"{idx + 1}/{total}", on_new=on_new)
         if state:
             state.mark_pass_done(label)
         logger.info("Pass %s done (total unique: %d)", pass_id, len(seen))
@@ -189,16 +211,15 @@ class InterpolClient:
         delay: float,
         pass_id: str = "",
         combo: str = "",
+        on_new: Callable[[list[RedNotice]], None] | None = None,
     ) -> None:
-        """Paginate through all results for a given filter combination."""
         page = 1
         prev_ids: frozenset | None = None
         identical = 0
 
         while True:
-            params = {"resultPerPage": 160, "page": page, **extra}
+            params = {"resultPerPage": _RESULTS_PER_PAGE, "page": page, **extra}
             ok, data, _ = self._get_with_retry(params)
-
             if not ok or not data:
                 break
 
@@ -216,21 +237,25 @@ class InterpolClient:
                 identical = 0
             prev_ids = page_ids
 
+            new_batch: list[RedNotice] = []
             for item in items:
                 notice = RedNotice.from_api_item(item)
                 if notice.entity_id and notice.entity_id not in seen:
                     seen[notice.entity_id] = notice
+                    new_batch.append(notice)
+
+            if on_new and new_batch:
+                on_new(new_batch)
 
             if "next" not in data.get("_links", {}):
                 break
 
             page += 1
             if delay > 0:
-                time.sleep(delay + random.uniform(0.0, delay * 0.15))
+                time.sleep(delay + random.uniform(0.5, delay * 0.5))
 
     @staticmethod
     def _extract(data: Any) -> list[dict[str, Any]]:
-        """Pull the notices list out of whatever structure the API returns."""
         if isinstance(data, list):
             return data
         if isinstance(data, dict):
@@ -243,4 +268,3 @@ class InterpolClient:
                         if isinstance(val.get(nested), list):
                             return val[nested]
         return []
-

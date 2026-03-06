@@ -6,14 +6,16 @@ so no Docker volume is required.  QueueConsumer.start_in_thread is
 mocked to prevent background RabbitMQ reconnection noise during tests.
 """
 
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
-# Patch out the RabbitMQ daemon thread for all tests in this module.
-# The patch is applied at class level so it covers the module-level
-# `app = create_app()` call that happens on first import as well.
-with patch("web.consumer.QueueConsumer.start_in_thread"):
+# Import web.photo first so the module is in sys.modules before patching
+import web.photo  # noqa: F401
+
+# Patch out the RabbitMQ daemon thread and photo backfill for all tests in this module.
+with patch("web.consumer.QueueConsumer.start_in_thread"), \
+     patch("web.photo.start_backfill_thread"):
     from web.app import create_app
 
 
@@ -24,7 +26,8 @@ with patch("web.consumer.QueueConsumer.start_in_thread"):
 @pytest.fixture(scope="module")
 def app():
     """Fresh Flask test app with in-memory SQLite and no RabbitMQ thread."""
-    with patch("web.consumer.QueueConsumer.start_in_thread"):
+    with patch("web.consumer.QueueConsumer.start_in_thread"), \
+         patch("web.photo.start_backfill_thread"):
         application = create_app()
     application.config["TESTING"] = True
     return application

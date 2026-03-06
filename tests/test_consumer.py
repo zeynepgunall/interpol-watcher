@@ -18,6 +18,11 @@ from web.consumer import QueueConsumer
 from web.models import Notice, create_session_factory
 from web.notice_service import NoticeService
 
+# download_photo'yu testlerde devre dışı bırak
+from unittest.mock import patch
+_photo_patch = patch("web.consumer.download_photo", return_value=True)
+_photo_patch.start()
+
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -52,6 +57,7 @@ def consumer(session_factory):
     """
     c = QueueConsumer.__new__(QueueConsumer)
     c._notice_service = NoticeService(session_factory)
+    c._on_change = None
     return c
 
 
@@ -93,16 +99,29 @@ def test_new_notice_is_inserted(consumer, session_factory):
         session.close()
 
 
-def test_duplicate_notice_sets_is_updated(consumer, session_factory):
-    """Re-arrival of an existing entity_id must set is_updated=True (ALARM)."""
+def test_duplicate_notice_same_data_unchanged(consumer, session_factory):
+    """Re-arrival with identical data must NOT set is_updated (no alarm)."""
     body = _payload()
     consumer._handle_message(body)   # first arrival → INSERT
-    consumer._handle_message(body)   # second arrival → UPDATE + is_updated=True
+    consumer._handle_message(body)   # second arrival → UNCHANGED (same data)
 
     session = session_factory()
     try:
         notices = session.query(Notice).all()
-        # Must still be exactly ONE row (no duplicate inserts)
+        assert len(notices) == 1
+        assert notices[0].is_updated is False
+    finally:
+        session.close()
+
+
+def test_duplicate_notice_changed_data_sets_is_updated(consumer, session_factory):
+    """Re-arrival with changed fields must set is_updated=True (ALARM)."""
+    consumer._handle_message(_payload())
+    consumer._handle_message(_payload(name="CHANGED"))
+
+    session = session_factory()
+    try:
+        notices = session.query(Notice).all()
         assert len(notices) == 1
         assert notices[0].is_updated is True
     finally:

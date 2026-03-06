@@ -2,7 +2,7 @@ import logging
 import time
 
 from .config import FetcherConfig
-from .interpol_client import InterpolClient, RedNotice
+from .interpol_client import InterpolClient
 from .queue_publisher import QueuePublisher
 
 logger = logging.getLogger(__name__)
@@ -17,11 +17,13 @@ class FetchOrchestrator:
         client: InterpolClient,
         publisher: QueuePublisher,
     ) -> None:
+        """Config, API istemcisi ve kuyruk publisher'ı dışarıdan alır (dependency injection)."""
         self._config = config
         self._client = client
         self._publisher = publisher
 
     def run_forever(self) -> None:
+        """Sonsuz döngüde Interpol API'den veri çeker ve RabbitMQ'ya yazar. Her döngü arasında config'deki süre kadar bekler."""
         logger.info("Starting Interpol fetcher loop.")
         logger.info("Base URL       : %s", self._config.interpol_base_url)
         logger.info("Fetch interval : %s s", self._config.fetch_interval_seconds)
@@ -29,22 +31,29 @@ class FetchOrchestrator:
         while True:
             try:
                 notices = self._fetch_cycle()
-                logger.info("Fetched %d notices, publishing to RabbitMQ.", len(notices))
-                self._publisher.publish_notices(notices)
+                if notices:
+                    logger.info("Fetched %d notices, publishing to RabbitMQ.", len(notices))
+                    self._publisher.publish_notices(notices)
+                else:
+                    logger.info("Fetch cycle complete (streaming or empty).")
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Error during fetch/publish cycle: %s", exc)
 
             time.sleep(self._config.fetch_interval_seconds)
 
-    def _fetch_cycle(self) -> list[RedNotice]:
+    def _fetch_cycle(self) -> list:
         """Select the correct fetch strategy and return a list of notices."""
-        if self._config.use_mock_data:
-            logger.info("Mock data enabled; publishing sample notices.")
-            return self._mock_notices()
+        if self._config.fetch_all:
+            logger.info("Fetching ALL red notices (full scan, streaming)...")
+            self._client.fetch_all_red_notices(
+                request_delay=self._config.request_delay_seconds,
+                on_new=self._publisher.publish_notices,
+                state_file=self._config.state_file_path,
+            )
 
         if self._config.fetch_extended:
-            logger.info("Fetching EXTENDED red notices (multi-pass)...")
-            return self._client.fetch_extended_red_notices(
+            logger.info("Fetching EXTENDED red notices (multi-pass, streaming)...")
+            self._client.fetch_extended_red_notices(
                 request_delay=self._config.request_delay_seconds,
                 enable_pass_age_0_9=self._config.enable_pass_age_0_9,
                 enable_pass_in_pk_1yr=self._config.enable_pass_in_pk_1yr,
@@ -52,50 +61,18 @@ class FetchOrchestrator:
                 age_1yr_min=self._config.age_1yr_min,
                 age_1yr_max=self._config.age_1yr_max,
                 state_file=self._config.state_file_path,
+                on_new=self._publisher.publish_notices,
             )
 
-        if self._config.fetch_all:
-            logger.info("Fetching ALL red notices (full scan)...")
-            return self._client.fetch_all_red_notices()
+        if self._config.fetch_all or self._config.fetch_extended:
+            return []  # zaten streaming ile yayınlandı
 
         logger.info("Fetching latest red notices (~160 records)...")
         return self._client.fetch_red_notices(result_per_page=160)
 
-    @staticmethod
-    def _mock_notices() -> list[RedNotice]:
-        # Small fixed dataset for USE_MOCK_DATA=true smoke-tests.
-        return [
-            RedNotice(
-                entity_id="2026/0001",
-                name="DOE",
-                forename="JANE",
-                date_of_birth="1980/01/01",
-                nationality="TR",
-                all_nationalities="TR",
-                arrest_warrant="Fraud",
-            ),
-            RedNotice(
-                entity_id="2026/0002",
-                name="SMITH",
-                forename="JOHN",
-                date_of_birth="1975/05/12",
-                nationality="DE",
-                all_nationalities="DE",
-                arrest_warrant="Cybercrime",
-            ),
-            RedNotice(
-                entity_id="2026/0003",
-                name="GARCIA",
-                forename=None,
-                date_of_birth=None,
-                nationality="ES",
-                all_nationalities=None,
-                arrest_warrant=None,
-            ),
-        ]
-
 
 def _configure_logging() -> None:
+    """Root logger'ı INFO seviyesinde ve zaman damgalı formatta yapılandırır."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
@@ -113,5 +90,3 @@ def run_forever() -> None:
 
 if __name__ == "__main__":
     run_forever()
-
-
