@@ -9,9 +9,7 @@ COPY web /app/web
 COPY shared /app/shared
 
 ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=web.app:app
 
 EXPOSE 8000
 
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8000"]
-
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "--timeout", "120", "web.app:app"]

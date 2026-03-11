@@ -1,20 +1,25 @@
+"""Fetcher yapılandırması — tüm değerler ortam değişkenlerinden okunur."""
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 
 
 def _bool_env(key: str, default: str = "true") -> bool:
-    """Ortam değişkenini oku ve boolean'a çevir. '1','true','yes','y' → True, diğerleri → False."""
+    """Ortam değişkenini boolean'a çevirir. '1','true','yes','y' → True."""
     return os.getenv(key, default).strip().lower() in {"1", "true", "yes", "y"}
 
 
 def _csv_env(key: str, default: str) -> list[str]:
-    """Ortam değişkenini virgülle ayrılmış liste olarak oku. Her değeri büyük harfe çevirir."""
+    """Ortam değişkenini virgülle ayrılmış listeye çevirir (büyük harf)."""
     raw = os.getenv(key, default).strip()
     return [v.strip().upper() for v in raw.split(",") if v.strip()]
 
 
 @dataclass
 class FetcherConfig:
+    """Interpol API istemcisi ve RabbitMQ bağlantı ayarları."""
+
     interpol_base_url: str
     fetch_interval_seconds: int
     fetch_all: bool
@@ -34,8 +39,8 @@ class FetcherConfig:
     state_file_path: str
 
     @classmethod
-    def from_env(cls) -> "FetcherConfig":
-        """Tüm ortam değişkenlerini okuyarak bir FetcherConfig nesnesi oluşturur. Eksik değerler için varsayılanları kullanır."""
+    def from_env(cls) -> FetcherConfig:
+        """Ortam değişkenlerinden yapılandırma oluşturur."""
         return cls(
             interpol_base_url=os.getenv("INTERPOL_BASE_URL", "https://ws-public.interpol.int"),
             fetch_interval_seconds=int(os.getenv("INTERPOL_FETCH_INTERVAL_SECONDS", "300")),
@@ -54,4 +59,3 @@ class FetcherConfig:
             request_delay_seconds=float(os.getenv("REQUEST_DELAY_SECONDS", "1.5")),
             state_file_path=os.getenv("STATE_FILE_PATH", "/data/scan_state.json"),
         )
-

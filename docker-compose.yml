@@ -1,16 +1,15 @@
-version: "3.9"
-
 services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: interpol_rabbitmq
+    restart: unless-stopped
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672" #RabbitMQ'nun mesajlaşma portu
+      - "15672:15672" #RabbitMQ yönetim arayüzü portu
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
-    healthcheck:
+    healthcheck: #diğer servislerin RabbitMQ'ya bağlanmadan önce hazır olup olmadığını kontrol etmek için  ekleniyor
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 10s
       timeout: 5s
@@ -19,6 +18,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: interpol_postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-interpol}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interpol123}
@@ -26,18 +26,19 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data #veriler konteyner silinse bile kalır
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U interpol" ]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  fetcher:
+  fetcher: #kendi Dockerfile'ından build ediliyor RabbitMQ sağlıklı hale gelince başlatılır
     build:
       context: .
       dockerfile: fetcher/Dockerfile
     container_name: interpol_fetcher
+    restart: unless-stopped
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -60,12 +61,19 @@ services:
       STATE_FILE_PATH: ${STATE_FILE_PATH:-/data/scan_state.json}
     volumes:
       - web_data:/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pgrep -f 'python -m fetcher.main' || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
+  #web servisi de kendi Dockerfile’ından build ediliyor. RabbitMQ ve PostgreSQL hazır olduktan sonra başlıyor
   web:
     build:
       context: .
       dockerfile: web/Dockerfile
     container_name: interpol_web
+    restart: unless-stopped
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -83,7 +91,15 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://interpol:interpol123@postgres:5432/interpol_db}
     volumes:
       - web_data:/data
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/status\")'" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+#iki kalıcı volume tanımladım.pg_data PostgreSQL verileri için, web_data ise uygulama seviyesindeki paylaşılan dosyalar için
 
 volumes:
   web_data:
   pg_data:
+  

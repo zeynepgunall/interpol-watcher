@@ -1,3 +1,6 @@
+"""Red Notice veri modeli — Interpol API yanıtını yapılandırılmış nesneye dönüştürür.
+   API'DEN GELEN JSON VERİSİNİ RedNotice nesnesine parse eder."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,6 +9,8 @@ from typing import Any
 
 @dataclass
 class RedNotice:
+    """Interpol Red Notice kaydının veri taşıyıcısı."""
+
     entity_id: str
     name: str | None
     forename: str | None
@@ -17,9 +22,9 @@ class RedNotice:
 
     @classmethod
     def from_api_item(cls, item: dict[str, Any]) -> RedNotice:
-        """Interpol API'den gelen ham JSON sözlüğünü parse ederek RedNotice nesnesine dönüştürür.
-        Uyruk listesini virgülle birleştirir, tutuklama emrinin ilk charge alanını alır,
-        thumbnail linkini doğrular."""
+        """
+        Interpol API'den gelen ham JSON'u parse eder.RedNotice nesnesi oluşturuyor.
+        """
         nationalities = item.get("nationalities") or []
         nationality = nationalities[0] if nationalities else item.get("nationality")
         all_nat = ",".join(nationalities) if nationalities else nationality or ""
@@ -28,13 +33,12 @@ class RedNotice:
 
         arrest_warrants = item.get("arrest_warrants")
         arrest_warrant = (
-            arrest_warrants[0].get("charge")
+            arrest_warrants[0].get("charge") 
             if isinstance(arrest_warrants, list) and arrest_warrants
             else None
         )
 
-        # Fotoğraf URL'sini _links.thumbnail.href'ten al (Interpol public JSON API)
-        # Yeni format: /images/{imageId}  (eski: /images/1/thumbnail — artık geçersiz)
+        # Thumbnail URL'i doğrula: gerçek fotoğraf URL'leri "/images/" içerir
         photo_url = item.get("_links", {}).get("thumbnail", {}).get("href")
         if photo_url and "/images/" not in photo_url:
             photo_url = None

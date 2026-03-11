@@ -1,3 +1,9 @@
+"""Interpol public API HTTP istemcisi — Red Notice verilerini çeker.
+- Fetcher API'den veri çekmek için InterpolClient'ı kullanır.
+- fetch_extended_red_notices(): ek filtre kombinasyonlarıyla daha derin veri çekimi sağlar.
+- İstekler arasında rastgele gecikmeler uygular, 403 ban durumlarında session'ı sıfırlar ve kademeli bekleme yapar.
+- _collect_pages(): API'yi sayfa sayfa gezerek notice'leri toplar. Sonsuz pagination döngüsünü algılar ve önler.
+- ScanStateManager: Pass ilerlemesini JSON dosyasına kaydeder. Fetcher yeniden başladığında kaldığı yerden devam eder."""
 from __future__ import annotations
 
 import logging
@@ -8,9 +14,9 @@ from typing import Any, Callable
 
 import requests
 
-from .notice import RedNotice  # noqa: F401 – re-exported for tests
+from .notice import RedNotice
 from .passes import extended_passes, full_scan_passes
-from .scan_state import ScanStateManager  # noqa: F401 – re-exported for tests
+from .scan_state import ScanStateManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +32,11 @@ _RESULTS_PER_PAGE = 100
 
 
 class InterpolClient:
-    """Interpol public API ile iletişim kuran HTTP istemcisi."""
+    """Interpol public API üzerinden Red Notice verilerini çeken HTTP istemcisi."""
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
-        self._session = requests.Session()
-        self._warmed_up = False
+        self._session = requests.Session() 
         self._ban_count = 0
 
     def _headers(self, *, json: bool = False) -> dict[str, str]:
@@ -56,7 +61,7 @@ class InterpolClient:
         }
 
     def _warmup(self) -> None:
-        """Interpol sitesine ön istek atarak oturumu ısındırır."""
+        """Interpol sitesine normal bir ziyaret simüle ederek session cookie alınır(bot algılamasını azaltır)."""
         if self._warmed_up:
             return
         time.sleep(random.uniform(2.0, 5.0))
@@ -70,15 +75,15 @@ class InterpolClient:
                     return
                 time.sleep(random.uniform(1.0, 3.0))
             except Exception as exc:
-                logger.warning("Warmup failed for %s: %s", url, exc)
+                logger.warning("Warmup hatası (%s): %s", url, exc)
         self._warmed_up = True
 
     def _reset_session(self) -> None:
-        """403 ban gelince session sıfırla, escalating backoff ile bekle."""
+        """403 ban sonrası session'ı sıfırlar ve kademeli bekleme uygular."""
         idx = min(self._ban_count, len(_BAN_BACKOFF) - 1)
         wait = _BAN_BACKOFF[idx]
         self._ban_count += 1
-        logger.warning("403 received (ban #%d); resetting session and waiting %d min", self._ban_count, wait // 60)
+        logger.warning("403 alındı (ban #%d); session sıfırlanıyor, %d dk bekleniyor", self._ban_count, wait // 60)
         self._session = requests.Session()
         self._warmed_up = False
         time.sleep(wait)
@@ -86,6 +91,7 @@ class InterpolClient:
         time.sleep(random.uniform(10.0, 20.0))
 
     def _get(self, params: dict[str, Any]) -> tuple[bool, Any, int]:
+        """API çağrılarını yapıyor ve başarısız istekleri retry mekanizmasıyla tekrar deniyor."""
         url = f"{self.base_url}{_API_PATH}"
         headers = {
             **self._headers(json=True),
@@ -103,17 +109,15 @@ class InterpolClient:
                 self._ban_count = 0
                 return True, resp.json(), 200
             return False, None, resp.status_code
-        except requests.exceptions.Timeout:
-            logger.error("Timeout: %s", url)
-            return False, None, -1
-        except requests.exceptions.ConnectionError as exc:
-            logger.error("Connection error: %s", exc)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            logger.error("Bağlantı hatası: %s → %s", url, exc)
             return False, None, -1
         except Exception as exc:
-            logger.error("Unexpected error: %s", exc)
+            logger.error("Beklenmeyen hata: %s → %s", url, exc)
             return False, None, -1
 
     def _get_with_retry(self, params: dict[str, Any]) -> tuple[bool, Any, int]:
+        """Başarısız istekleri retry mekanizmasıyla tekrar dener."""
         for attempt in range(1, _MAX_RETRIES + 1):
             ok, data, status = self._get(params)
             if ok:
@@ -122,20 +126,22 @@ class InterpolClient:
                 return False, None, 404
             if attempt < _MAX_RETRIES:
                 sleep = random.uniform(5.0, 15.0) if status == 403 else _RETRY_SLEEPS[attempt - 1]
-                logger.warning("Attempt %d failed (status=%d); retrying in %.1fs", attempt, status, sleep)
+                logger.warning("Deneme %d başarısız (status=%d); %.1fs sonra tekrar", attempt, status, sleep)
                 time.sleep(sleep)
         return False, None, -1
 
-    # ── PUBLIC API ──────────────────────────────────────────────────────────────
 
     def fetch_red_notices(self, result_per_page: int = 20) -> list[RedNotice]:
+    
         self._warmup()
         ok, data, _ = self._get({"resultPerPage": result_per_page})
         if not ok or not data:
-            raise RuntimeError(f"Failed to fetch red notices from {self.base_url}")
+            raise RuntimeError(f"Red Notice verisi çekilemedi: {self.base_url}")
         notices = [RedNotice.from_api_item(i) for i in self._extract(data)]
-        logger.info("Fetched %d notices", len(notices))
+        logger.info("%d notice çekildi", len(notices))
         return notices
+
+
 
     def fetch_all_red_notices(
         self,
@@ -143,12 +149,13 @@ class InterpolClient:
         on_new: Callable[[list[RedNotice]], None] | None = None,
         state_file: str = "/data/scan_state.json",
     ) -> list[RedNotice]:
+        """Tüm Red Notice'leri çoklu pass ile tarar (streaming modda)."""
         self._warmup()
         seen: dict[str, RedNotice] = {}
         state = ScanStateManager(state_file)
         for label, param_list in full_scan_passes():
             self._run_pass(label, param_list, seen, request_delay, state=state, on_new=on_new)
-        logger.info("Full scan complete: %d unique notices", len(seen))
+        logger.info("Tam tarama tamamlandı: %d benzersiz notice", len(seen))
         return list(seen.values())
 
     def fetch_extended_red_notices(
@@ -162,6 +169,7 @@ class InterpolClient:
         state_file: str = "/data/scan_state.json",
         on_new: Callable[[list[RedNotice]], None] | None = None,
     ) -> list[RedNotice]:
+        """Genişletilmiş tarama: ek filtre kombinasyonlarıyla daha derin veri çekimi."""
         self._warmup()
         seen: dict[str, RedNotice] = {}
         state = ScanStateManager(state_file)
@@ -174,26 +182,28 @@ class InterpolClient:
         )
         for label, param_list in passes:
             self._run_pass(label, param_list, seen, request_delay, state=state, on_new=on_new)
-        logger.info("Extended scan complete: %d unique notices", len(seen))
+        logger.info("Genişletilmiş tarama tamamlandı: %d benzersiz notice", len(seen))
         return list(seen.values())
 
+    """_run_pass() tek bir scan passini yöneten orchestration fonksiyonu. Parametre kombinasyonlarını tek tek çalıştırıyor, gerekiyorsa kaldığı yerden devam ediyor, _collect_pages() ile sayfaları topluyor ve ilerlemeyi state dosyasına kaydediyor."""
     def _run_pass(
         self,
         label: str,
         param_list: list[dict[str, Any]],
         seen: dict[str, RedNotice],
         request_delay: float,
-        state: ScanStateManager | None = None,
+        state: ScanStateManager | None = None, 
         on_new: Callable[[list[RedNotice]], None] | None = None,
     ) -> None:
+        """Tek bir pass'ı çalıştırır. Crash-safe state yönetimi(ScanStateManager kullanarak)(kaldığı yerden devam etmesini sağlıyor.) ile kaldığı yerden devam eder."""
         if state and state.is_pass_done(label):
-            logger.info("Skipping pass '%s' (already done)", label)
+            logger.info("Pass '%s' atlanıyor (zaten tamamlanmış)", label)
             return
         m = re.match(r"Pass\s+(\w+)", label)
         pass_id = m.group(1) if m else label
         total = len(param_list)
         resume = state.get_resume_idx(label) if state else 0
-        logger.info("Pass %s starting (%d combos)", pass_id, total)
+        logger.info("Pass %s başlıyor (%d kombinasyon)", pass_id, total)
         for idx, params in enumerate(param_list):
             if idx < resume:
                 continue
@@ -202,8 +212,9 @@ class InterpolClient:
             self._collect_pages(seen, params, request_delay, pass_id=pass_id, combo=f"{idx + 1}/{total}", on_new=on_new)
         if state:
             state.mark_pass_done(label)
-        logger.info("Pass %s done (total unique: %d)", pass_id, len(seen))
+        logger.info("Pass %s tamamlandı (toplam benzersiz: %d)", pass_id, len(seen))
 
+        """API'yi sayfa sayfa gezerek notice'leri toplar. Sonsuz pagination döngüsünü algılar ve önler."""
     def _collect_pages(
         self,
         seen: dict[str, RedNotice],
@@ -213,6 +224,7 @@ class InterpolClient:
         combo: str = "",
         on_new: Callable[[list[RedNotice]], None] | None = None,
     ) -> None:
+        """Sayfalanmış API yanıtlarını toplar. Döngü algılaması ile sonsuz pagination'ı önler."""
         page = 1
         prev_ids: frozenset | None = None
         identical = 0
@@ -227,11 +239,12 @@ class InterpolClient:
             if not items:
                 break
 
+            # Sonsuz pagination döngüsünü algıla
             page_ids = frozenset(i.get("entity_id", "") for i in items if i.get("entity_id"))
             if prev_ids is not None and page_ids == prev_ids:
                 identical += 1
                 if identical >= 2:
-                    logger.warning("Pagination loop at page %d, stopping", page)
+                    logger.warning("Pagination döngüsü algılandı (sayfa %d), durduruluyor", page)
                     break
             else:
                 identical = 0
@@ -256,6 +269,7 @@ class InterpolClient:
 
     @staticmethod
     def _extract(data: Any) -> list[dict[str, Any]]:
+        """API yanıtından notice listesini çıkarır (farklı response formatlarını destekler)."""
         if isinstance(data, list):
             return data
         if isinstance(data, dict):

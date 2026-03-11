@@ -1,26 +1,27 @@
+"""Fetcher ile web servisi arasındaki entegrasyon katmanı.Fetcher'ın publish  ettiği mesajları kuyruktan okur, DB'ye yazar, UI'a gerçek zamanlı bildirim gönderir."""
 import logging
 import threading
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 
 import pika
 
 from shared.message import decode as _decode
+from shared.utils import utcnow_naive
 from .config import WebConfig
-from .models import Notice, create_session_factory, ALARM_WINDOW_SECONDS
+from .models import Notice, create_session_factory, get_session, ALARM_WINDOW_SECONDS
 from .notice_service import NoticeService, UpsertOutcome
 from .photo import download_photo
 
 logger = logging.getLogger(__name__)
 
-_SWEEPER_INTERVAL = 15  # kaç saniyede bir temizlik yapılacak
+_SWEEPER_INTERVAL = 15
 
 
 class QueueConsumer:
-    """RabbitMQ consumer that deserialises notice messages and delegates persistence to NoticeService."""
+    """"RabbitMQ’dan gelen notice mesajlarını işleyip web katmanına entegre etmek."""
 
     def __init__(self, config: WebConfig, on_change=None) -> None:
-        """Config ve isteğe bağlı SSE callback alır; DB session factory ve NoticeService oluşturur."""
         self._config = config
         self._on_change = on_change
         self._session_factory = create_session_factory(config)
@@ -37,72 +38,64 @@ class QueueConsumer:
         )
 
     def _handle_message(self, body: bytes) -> None:
-        """Gelen mesajı JSON'dan çözer, NoticeService.upsert() ile DB'ye yazar,
-        fotoğrafı disk'e indirir, SSE üzerinden tarayıcılara bildirim gönderir."""
-        payload = _decode(body)
-        result = self._notice_service.upsert(payload)
+        """Gelen mesajı işler"""
+        payload = _decode(body) #Mesaj decode edilir.
+        result = self._notice_service.upsert(payload) #DB'ye kaydeder, güncelleme varsa is_updated=True yapar ve sonucu döner.
         if result.outcome is UpsertOutcome.SKIPPED:
-            logger.warning("Dropped message — no entity_id: %s", payload)
+            logger.warning("Mesaj atlandı — entity_id yok: %s", payload)
         elif result.outcome is UpsertOutcome.ERROR:
-            logger.error("Failed to persist %s: %s", result.entity_id, result.error)
+            logger.error("Kayıt hatası %s: %s", result.entity_id, result.error)
         else:
-            # Fotoğrafı disk'e indir (zaten varsa skip eder)
             photo_url = payload.get("photo_url")
             if photo_url and result.entity_id:
-                download_photo(result.entity_id, photo_url)
+                download_photo(result.entity_id, photo_url) #fotoğraf indirilirr
             if self._on_change is not None:
                 try:
-                    self._on_change(result.outcome.name)
+                    self._on_change(result.outcome.name) #SSE ile UI'a bildirim gönderilir
                 except Exception as exc:
-                    logger.warning("SSE notify failed: %s", exc)
+                    logger.warning("SSE bildirim hatası: %s", exc)
 
     def start_in_thread(self) -> None:
-        """Consumer ve sweeper'ı arka planda daemon thread olarak başlatır."""
+        """Consumer ve sweeper thread'lerini başlatır.Arka planda sürekli mesaj dinlenir ve alarm temizliği yapılır."""
         threading.Thread(target=self._consume_forever, daemon=True).start()
         threading.Thread(target=self._sweeper_forever, daemon=True).start()
-        logger.info("Sweeper thread started (interval=%ds, window=%ds)", _SWEEPER_INTERVAL, ALARM_WINDOW_SECONDS)
-
-    # ── SWEEPER ─────────────────────────────────────────────────────────────────
+        logger.info(
+            _SWEEPER_INTERVAL,
+            ALARM_WINDOW_SECONDS,
+        )
 
     def _sweeper_forever(self) -> None:
-        """
-        Her 15 saniyede bir çalışır.
-        is_updated=True olan kayıtların updated_at süresi dolmuşsa is_updated=False yapar.
-        Böylece alarm geçici olur — 60 saniye sonra otomatik söner.
-        """
+        """Süresi dolan alarmları periyodik olarak temizler.Amaç:alarm sonsuza kadar aktif kalmasın."""
         while True:
             time.sleep(_SWEEPER_INTERVAL)
             try:
                 self._sweep_expired_alarms()
             except Exception as exc:
-                logger.warning("Sweeper error: %s", exc)
+                logger.warning("Sweeper hatası: %s", exc)
 
     def _sweep_expired_alarms(self) -> None:
-        expiry_limit = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=ALARM_WINDOW_SECONDS)
-        session = self._session_factory()
-        try:
-            affected = (
-                session.query(Notice)
-                .filter(Notice.is_updated == True, Notice.updated_at <= expiry_limit)
-                .update({Notice.is_updated: False})
-            )
-            session.commit()
-            if affected:
-                logger.info("Sweeper: %d alarm temizlendi", affected)
-                if self._on_change is not None:
-                    self._on_change("SWEPT")
-        except Exception as exc:
-            session.rollback()
-            logger.warning("Sweeper DB error: %s", exc)
-        finally:
-            session.close()
-
-    # ── CONSUMER ────────────────────────────────────────────────────────────────
+        """Alarm penceresi geçmiş kayıtların is_updated bayrağını sıfırlar."""
+        expiry_limit = utcnow_naive() - timedelta(seconds=ALARM_WINDOW_SECONDS)
+        with get_session(self._session_factory) as session:
+            try:
+                affected = (
+                    session.query(Notice)
+                    .filter(Notice.is_updated.is_(True), Notice.updated_at <= expiry_limit)
+                    .update({Notice.is_updated: False})
+                )
+                session.commit()
+                if affected:
+                    logger.info("Sweeper: %d alarm temizlendi", affected)
+                    if self._on_change is not None:
+                        self._on_change("SWEPT")
+            except Exception as exc:
+                session.rollback()
+                logger.warning("Sweeper DB hatası: %s", exc)
 
     def _consume_forever(self) -> None:
-        """Sonsuz döngüde RabbitMQ'ya bağlanır ve mesajları dinler. Bağlantı koparsa exponential backoff ile yeniden dener."""
+        """RabbitMQ'ya bağlanır ve mesajları dinler."""
         logger.info(
-            "Starting RabbitMQ consumer on %s:%s queue=%s",
+            "RabbitMQ consumer başlatılıyor: %s:%s queue=%s",
             self._config.rabbitmq_host,
             self._config.rabbitmq_port,
             self._config.rabbitmq_queue_name,
@@ -116,13 +109,13 @@ class QueueConsumer:
 
                 def callback(ch, method, properties, body):
                     self._handle_message(body)
-                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    ch.basic_ack(delivery_tag=method.delivery_tag) #yeni mesaj başarıyla işlendiğimde RabbitMQ'ya tamam deniyor
 
                 channel.basic_qos(prefetch_count=1)
                 channel.basic_consume(
                     queue=self._config.rabbitmq_queue_name, on_message_callback=callback
                 )
-                logger.info("RabbitMQ connection established, consuming messages.")
+                logger.info("RabbitMQ bağlantısı kuruldu, mesajlar dinleniyor.")
                 retry_delay = 5
                 try:
                     channel.start_consuming()
@@ -135,6 +128,10 @@ class QueueConsumer:
                     except Exception:
                         pass
             except Exception as exc:
-                logger.warning("RabbitMQ connection failed: %s — retrying in %s s", exc, retry_delay)
+                logger.warning(
+                    "RabbitMQ bağlantı hatası: %s — %d sn sonra tekrar denenecek",
+                    exc,
+                    retry_delay,
+                )
                 time.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, 60)

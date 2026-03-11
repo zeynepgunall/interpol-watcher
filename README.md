@@ -1,256 +1,187 @@
 # Interpol Red Notice Watcher
 
-Interpol tarafından yayınlanan kırmızı bülten (Red Notice) verilerini periyodik olarak izleyen, RabbitMQ üzerinden işleyen ve web arayüzünde alarm sistemiyle sunan bir Docker tabanlı mikroservis projesi.
+Interpol tarafından yayınlanan kırmızı bülten (Red Notice) verilerini periyodik olarak izleyen, RabbitMQ üzerinden asenkron olarak işleyen, verileri PostgreSQL veritabanında saklayan ve web arayüzünde modern bir tasarımla anlık ("alarm") sunan, tamamen Dockerize edilmiş bir mikroservis projesi.
 
-## Mimari
+---
 
-```
+## 📌 İçindekiler
+- [Mimari ve Çalışma Mantığı](#mimari-ve-çalişma-mantiği)
+- [Öne Çıkan Özellikler](#öne-çikan-özellikler)
+- [Gereksinimler](#gereksinimler)
+- [Hızlı Kurulum (Docker ile)](#hizli-kurulum-docker-ile)
+- [Çevresel Değişkenler (.env)](#çevresel-değişkenler-env)
+- [Web Arayüzü ve Sistem Davranışları](#web-arayüzü-ve-sistem-davranişlari)
+- [Fotoğrafları Yerel Olarak İndirme](#fotoğraflari-yerel-olarak-i̇ndirme)
+- [Birim Testleri (Pytest)](#birim-testleri-pytest)
+- [Geliştirici Notları ve İpuçları](#geliştirici-notlari-ve-i̇puçlari)
+
+---
+
+## 🏛️ Mimari ve Çalışma Mantığı
+
+Sistem temel olarak 3 ayrı Docker konteynerinden (Fetcher, RabbitMQ, Web+Consumer+DB) oluşur ve aralarındaki asenkron mesajlaşma sayesinde birbirlerini bloke etmeden çalışırlar:
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                       docker-compose                            │
 │                                                                 │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
-│  │  Container A │    │  Container C │    │   Container B    │  │
-│  │   fetcher    │───▶│  rabbitmq    │───▶│  web + consumer  │  │
-│  │              │    │              │    │                  │  │
-│  │ Interpol API │    │ Message Queue│    │ Flask UI + SQLite│  │
-│  └──────────────┘    └──────────────┘    └──────────────────┘  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐   │
+│  │ Container A  │    │ Container B  │    │   Container C    │   │
+│  │   fetcher  ──│───▶│   rabbitmq ──│───▶│ web + consumer   │   │
+│  │ (python loop)│    │(mesaj kuyruğu)    │ (flask + thread) │   │
+│  └──────────────┘    └──────────────┘    └──────────────────┘   │
 │         │                                        │              │
-│         └──────────── /data volume ──────────────┘              │
-│                   (notices.db + scan_state.json)                │
+│       ┌─┴────────────────────────────────────────┴─┐            │
+│       │                 volumes                    │            │
+│       │ postgresql_data      web_data (scan_state) │            │
+│       └────────────────────────────────────────────┘            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-- **Container A – Fetcher**: Interpol public API'sini `INTERPOL_FETCH_INTERVAL_SECONDS` (varsayılan: 300 sn) periyotla tarar. Çekilen her kırmızı bülten JSON mesajı olarak RabbitMQ kuyruğuna yazılır. Tarama ilerlemesi `scan_state.json` ile crash-safe biçimde korunur; servis yeniden başlarsa kaldığı combo'dan devam eder.
-- **Container B – Web + Consumer**: Flask web sunucusu ile RabbitMQ consumer aynı container içinde paralel çalışır. Consumer gelen mesajları SQLite'a yazar; aynı `entity_id` için gelen mesajlar `is_updated=True` ile işaretlenir ve web arayüzünde **⚠ ALARM** olarak vurgulanır. `/api/status` endpoint'i ile JS polling her 30 saniyede arayüzü günceller.
-- **Container C – RabbitMQ**: Dayanıklı (durable) mesaj kuyruğu. Yönetim paneli `http://localhost:15672` adresinde erişilebilir.
+1. **Fetcher (Container A):** 
+   - Interpol public API'sini parametrelerle (`INTERPOL_FETCH_INTERVAL_SECONDS` vb.) periyodik olarak tarar.
+   - Yaş aralığı ve uyruk bazlı (özel yüksek riskli ülkeler vb.) kombine pass'ler göndererek API sınırını aşmayı başarır.
+   - Elde ettiği `RedNotice` nesnelerini bir JSON payload'u haline getirip **RabbitMQ**'ya fırlatır.
+   - Her tur sonrasında ilerlemesini container-volume içindeki `scan_state.json`'a işler (Çökme durumunda kaldığı yerden devam edebilmesi için *crash-safe* tasarlanmıştır).
+
+2. **RabbitMQ (Container B):** 
+   - İletişim için dayanıklı (`durable`) AMQP mesaj kuyruğudur. Fetcher'ın hız bağımsız olarak ilettiği mesajları PostgreSQL'e veya Consumer thread'ine güvenli şekilde paslar. Yönetim paneli `http://localhost:15672` tadır.
+
+3. **Web + Consumer + Postgres (Container C & D):**
+   - **Consumer (Daemon Thread):** Arka planda `pika` kütüphanesi ile RabbitMQ'yu dinler. `entity_id` eşsiz olacak şekilde PostgreSQL DB'sine kayıt girer (INSERT) veya eski kayıt güncellendiyse bunu işaretler (`is_updated=True`).
+   - **Postgres (Database):** Web uygulamasının ve Consumer'ın ortak veritabanıdır (`interpol_db`). Özel `volume` sayesinde restart'ta bile korunan veri depolar.
+   - **Web UI (Flask):** SQLite/PostgreSQL fark etmeksizin DB'yi sorgular ve modern bir arayüzde yayınlar. JS Polling mantığı sayesinde arayüzdeki veriler her 30 saniyede bir otomatik canlanır.
 
 ---
 
-## Hızlı Başlangıç
+## 🚀 Öne Çıkan Özellikler
 
-**Gereksinimler:** Docker ve Docker Compose (geliştirme ortamı için Python 3.11+)
+- **Crash-Safe Scan:** Çok uzun süren Interpol taramasında internet koparsa ve script kapanırsa bile `scan_state.json` ile kalındığı bloktan devam edebilme.
+- **Asenkron Kuyruk (RabbitMQ):** Veri toplayıcısının (Fetcher) bekleme yapmadan sadece mesaj gönderme görevini üstlenmesi performansı son derece arttırır.
+- **Güçlü Veritabanı (PostgreSQL):** Docker compose üzerinde otomatik olarak hazır hâle gelen veritabanı yığını.
+- **Anında Alarmlar (UI):** Zaten sistemde olan bir kişi, bir süre sonra Interpol tarafından güncellenirse (örneğin yeri tespit edildi vs.) Consumer bu kaydı veritabanında "🔴 ALARM" olarak (kırmızı nabız efektiyle) belirgin hâle getirir.
+- **Batch Resim İndiricisi:** Şüphelilerin fotoğraflarını direkt diske indiren anti-ban özellikli asenkron (delaylı) ekstra Script. 
+
+---
+
+## ⚙️ Gereksinimler
+
+Proje hiçbir ekstra bağımlılığa ihtiyaç duymadan, doğrudan `docker` altyapısı ile her şeyi ayağa kaldırmaktadır. Sadece şunların yüklü olması gerekir:
+- **Docker** ve **Docker Compose**
+
+*(Geliştirme veya testing amacı ile local çalıştıracaksanız `Python 3.11+` tavsiye edilir.)*
+
+---
+
+## 🛠️ Hızlı Kurulum (Docker ile)
+
+Gereksinimler sağlandıktan sonra terminal üzerinden sadece 2 komutla tüm sistemi ayağa kaldırabilirsiniz:
 
 ```bash
-# 1. Repoyu klonlayın
+# 1. Repoyu klonlayıp içine girin
 git clone <repo-url> interpol-watcher
 cd interpol-watcher
 
-# 2. Tüm servisleri tek komutla başlatın
-docker-compose up --build
+# 2. Örnek konfigürasyon dosyasını (ENV) yaratın ve isterseniz değiştirin
+cp .env.example .env
 
-# 3. Tarayıcıyı açın
-#   Web arayüzü  → http://localhost:8000
-#   RabbitMQ UI  → http://localhost:15672  (guest / guest)
+# 3. Tüm sistemi arka planda (detached) orkestre edin
+docker-compose up --build -d
 ```
 
-Servisleri arkaplanda çalıştırmak için:
+Compose dosyası `depends_on` ile önce **PostgreSQL** ve **RabbitMQ** altyapısının ayağa kalkmasını, sonrasında **Web** sunucusu ve **Fetcher** container'ının güvenle başlatılmasını sağlayacaktır.
 
 ```bash
-docker-compose up -d --build
-docker-compose logs -f fetcher   # fetcher loglarını takip etmek için
+# Servis durumlarını izlemek için loglar:
+docker-compose logs -f fetcher    # Fetcher'ın API ile olan trafiğini görmek için
+docker-compose logs -f web        # Gelen Consumer logları ve Web trafiği
 ```
 
 ---
 
-## Nasıl Çalışır
+## 🌐 Web Arayüzü ve Sistem Davranışları
 
+1. **Erişim:** [http://localhost:8000](http://localhost:8000) adresine gittiğinizde web paneli açılacaktır.
+2. **Kırmızı Alarm:** 
+   - Kartların etrafında yanıp sönen bir kırmızı çerçeve görürseniz bu kişi **zaten sistemde kayıtlıdır** ve farklı veya aynı verilerle tekrar sisteme girdiği anlaşıldığı için *ALARMA* dönüşmüştür.
+3. **Gerçek Zamanlılık (Polling):** `index.html` içinde çalışan bir JavaScript periyodik olarak her 30 saniyede bir Flask `/api/status` endpoint'ine gider. Eğer toplam alarm sayısı veya toplam kişi sayısında bir değişiklik varsa F5'e basmasanız dahi verileri günceller.
+4. **Filtreler:** Uygulamanın üst sekmesindeki input barlardan Şüpheli Adı ve **Uyruğu (Örn: IN, PK, TR)** filtreleyebilirsiniz.
+
+---
+
+## 🔑 Çevresel Değişkenler (.env)
+
+Projeyi derlemeden (rebuild yapmadan) ayarları değiştirebileceğiniz çevreleyici (.env) değişkenlerden bazıları şunlardır:
+
+### Ortak Veritabanı ve Mesajlaşma Konfigürasyonları
+| Değişken | Varsayılan | Açıklama |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://interpol:interpol123@postgres:5432/interpol_db` | PostgreSQL veritabanı URI adresi |
+| `RABBITMQ_HOST` | `rabbitmq` | Docker compose içindeki local ağ alias'ı |
+| `RABBITMQ_PORT` | `5672` | AMQP standart portu |
+
+### Fetcher (Container A) Özelleştirmeleri
+| Değişken | Varsayılan | Açıklama |
+|---|---|---|
+| `INTERPOL_BASE_URL` | `https://ws-public.interpol.int` | Interpol public API URL |
+| `INTERPOL_FETCH_INTERVAL_SECONDS` | `300` | Ne sıklıkla döngülerin tamamlanıp baştan aranacağı (Saniye) |
+| `REQUEST_DELAY_SECONDS` | `3.0` | IP engeli almamak (403 ban) için API call'ları arasında ne kadar yavaşlanacağı |
+| `VERY_HIGH_NATIONALITIES_1YR` | `IN,PK` | Çok fazla suç barındırdığı için çok dar bir parametrede incelenecek ülkeler |
+| `ENABLE_PASS_AGE_0_9` | `true` | Çok geniş yaş grubu interpollerinde bebek/çocuk bandını inceler |
+
+---
+
+## 🖼️ Fotoğrafları Yerel Olarak İndirme
+
+Şüphelere ait fotoğrafların internet erişimleri (Interpol API kısıtlamaları veya expire olması) kapanabilir diye ayrı olarak fotoğrafları veritabanından bulup local diske indirecek özel bir helper (yardımcı script) vardır:
+
+**Kurulumu ve Kullanımı:**
+Kendi ana işletim sisteminizde (bilgisayarınızda) bağımlılıkları yükleyin:
+```bash
+pip install requests psycopg2-binary
 ```
-Interpol API
-    │
-    │  HTTP GET /notices/v1/red  (parametreli, sayfalı)
-    ▼
-[fetcher/interpol_client.py]
-    │  Her pass için yüzlerce (uyruk × yaş aralığı) combo sorgusu
-    │  Sonuçlar RedNotice dataclass'ına dönüştürülür
-    │  İlerleme /data/scan_state.json'a commit edilir (crash-safe)
-    ▼
-[fetcher/queue_publisher.py]
-    │  Her notice JSON olarak RabbitMQ kuyruğuna basılır
-    ▼
-RabbitMQ  (durable queue: interpol_red_notices)
-    ▼
-[web/consumer.py]  ← daemon thread, Flask ile aynı process
-    │  Yeni entity_id → INSERT  →  created_at, is_updated=False
-    │  Mevcut entity_id → UPDATE → updated_at, is_updated=True  ⚠ ALARM
-    ▼
-SQLite  (/data/notices.db, shared docker volume)
-    ▼
-[web/app.py]  Flask
-    │  GET /          → Kart görünümü (arama, uyruk filtresi, sayfalama)
-    │  GET /api/status → {"total": N, "alarms": N}  (JS polling için)
-    ▼
-Tarayıcı (her 30 saniyede /api/status → değişiklik varsa reload)
+Scripti çalıştırın:
+```bash
+python download_photos.py
 ```
+- DB'ye dışarıdan (`localhost:5432` üzerinden) bağlanarak photo URL bulur.
+- Random bekleme (delay) ekleyerek Interpol IP-Ban korumasından kurtulur.
+- Inen .jpg dosyalarını `./photos/` içerisine kaydeder.
+- Bu işlem bittikten sonra inen dosyaları Web Container'a atabilirsiniz:
+  ```bash
+  docker cp photos/. interpol_web:/data/photos/
+  ```
 
 ---
 
-## Ortam Değişkenleri
+## 🧪 Birim Testleri (Pytest)
 
-Tüm yapılandırma environment variable ile yönetilir. Koda dokunmadan `.env` dosyası oluşturarak değiştirilebilir.
-
-### Fetcher (Container A)
-
-| Değişken | Varsayılan | Açıklama |
-|---|---|---|
-| `INTERPOL_BASE_URL` | `https://ws-public.interpol.int` | API temel adresi |
-| `INTERPOL_FETCH_INTERVAL_SECONDS` | `300` | Tarama döngüsü aralığı (sn) |
-| `REQUEST_DELAY_SECONDS` | `1.5` | API istekleri arası bekleme |
-| `STATE_FILE_PATH` | `/data/scan_state.json` | Pass ilerleme dosyası |
-| `FETCH_EXTENDED` | `true` | Genişletilmiş çok-geçişli tarama |
-| `FETCH_ALL` | `false` | Tüm bültenleri tek geçişte çek |
-| `ENABLE_PASS_AGE_0_9` | `true` | 0-9 yaş aralığı passları aktif |
-| `ENABLE_PASS_IN_PK_1YR` | `true` | IN/PK uyruklu 1 yıllık passlar |
-| `VERY_HIGH_NATIONALITIES_1YR` | `IN,PK` | 1 yıllık pass için uyrukhttps |
-| `AGE_1YR_MIN` | `18` | 1 yıllık pass minimum yaş |
-| `AGE_1YR_MAX` | `45` | 1 yıllık pass maksimum yaş |
-
-### Web + Consumer (Container B)
-
-| Değişken | Varsayılan | Açıklama |
-|---|---|---|
-| `DATABASE_URL` | `sqlite:////data/notices.db` | SQLAlchemy bağlantı dizesi |
-| `FLASK_ENV` | `production` | Flask ortamı |
-
-### Ortak (RabbitMQ)
-
-| Değişken | Varsayılan | Açıklama |
-|---|---|---|
-| `RABBITMQ_HOST` | `rabbitmq` | RabbitMQ hostname |
-| `RABBITMQ_PORT` | `5672` | AMQP portu |
-| `RABBITMQ_QUEUE_NAME` | `interpol_red_notices` | Kuyruk adı |
-| `RABBITMQ_USER` | `guest` | RabbitMQ kullanıcısı |
-| `RABBITMQ_PASSWORD` | `guest` | RabbitMQ şifresi |
-
----
-
-## Arayüz Davranışı
-
-| Durum | Görsel | Açıklama |
-|---|---|---|
-| Yeni kayıt | Normal kart | `entity_id` ilk kez DB'ye girdi |
-| ⚠ ALARM | Kırmızı kenarlık + nabız animasyonu | Aynı `entity_id` yeniden geldi; `is_updated=True` |
-| Zaman bilgisi | `ADDED:` / `ALARM:` | `created_at` ve `updated_at` UTC zamanları |
-
-Arayüzde **ad/soyad arama** ve **uyruk filtresi** bulunur. Sayfalama 200 kayıt/sayfa olarak çalışır. Üst bantta aktif alarm sayısı gösterilir.
-
----
-
-## Fotoğraf Desteği
-
-Interpol public JSON API her notice için fotoğraf URL'si sağlar: `notice["_links"]["thumbnail"]["href"]`
-
-Bu URL `RedNotice.from_api_item()` tarafından `photo_url` alanına parse edilir ve tüm pipeline boyunca taşınır:
-
-| Katman | Alan | Açıklama |
-|---|---|---|
-| **Fetcher** | `RedNotice.photo_url` | API yanıtından parse edilir |
-| **Queue** | `photo_url` JSON key | `shared/message.py` FIELDS listesinde |
-| **DB** | `Notice.photo_url` | `VARCHAR(512)` sütunu |
-| **UI** | `<img src>` | Kart görünümünde gösterilir; yoksa `PhotoProxy` devreye girer |
-
-Fotoğraf yüklenemezse placeholder gösterilir. Mevcut `PhotoProxy` (`web/photo.py`) disk cache ile yedek olarak korunur.
-
-> Public Interpol JSON API kullanıldığı için fotoğraf erişimi hızlı ve stabildir.
-
----
-
-## Testleri Çalıştırma
+Projenin test coverage'ı çok yüksek olacak şekilde `pytest` kullanılarak oluşturulmuştur. Testleri container haricinde kendi ortamınızda test edebilirsiniz. Gerekli kütüphaneleri `pip install -r requirements.txt` ile kurduktan sonra:
 
 ```bash
-# Sanal ortam oluşturun (ilk kez)
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Linux/macOS
-
-pip install -r requirements.txt
-
-# Tüm testleri çalıştır
-pytest
-
-# Ayrıntılı çıktı ile
+# Tüm Testleri çalıştır
 pytest -v
 
-# Belirli bir dosyayı çalıştır
+# Sadece Fetcher modülünün spesifik Interpol API MOCK testlerini çalıştır
 pytest tests/test_interpol_client.py -v
+
+# Sadece RabbitMQ Queue/Consumer yapısını ve DB logic'ini test et
 pytest tests/test_consumer.py -v
-pytest tests/test_app.py -v
 ```
 
-### Test Kapsamı
-
-| Test Dosyası | Ne Test Eder |
-|---|---|
-| `tests/test_interpol_client.py` | `RedNotice.from_api_item` parse, HTTP monkeypatch ile `fetch_red_notices` |
-| `tests/test_consumer.py` | Yeni kayıt INSERT, mevcut kayıt UPDATE → `is_updated=True`, eksik `entity_id` görmezden gelme |
-| `tests/test_app.py` | Flask route'ları (`/`, `/api/status`), sayfalama, arama filtresi |
+**Not:** Testler hiçbir zaman PostgreSQL ve RabbitMQ araması yapmamaktadır. Memory içi Local veri kaynağı veya Mocking kullanarak simüle edilmiştir.
 
 ---
 
-## Klasör Yapısı
+## 👨‍💻 Geliştirici Notları ve İpuçları
 
-```
-interpol-watcher/
-├── docker-compose.yml          # 3 servisin orkestrasyon tanımı
-├── requirements.txt            # Python bağımlılıkları
-│
-├── fetcher/                    # Container A
-│   ├── Dockerfile
-│   ├── config.py               # FetcherConfig — tüm env değişkenleri
-│   ├── interpol_client.py      # InterpolClient, RedNotice, ScanStateManager, PassContext
-│   ├── main.py                 # run_forever() döngüsü
-│   └── queue_publisher.py      # RabbitMQ'ya publish
-│
-├── web/                        # Container B
-│   ├── Dockerfile
-│   ├── app.py                  # Flask app factory, route'lar
-│   ├── config.py               # WebConfig — tüm env değişkenleri
-│   ├── consumer.py             # QueueConsumer — RabbitMQ daemon thread
-│   ├── models.py               # Notice ORM modeli, SQLAlchemy
-│   └── templates/
-│       └── index.html          # Kart arayüzü, JS polling
-│
-└── tests/
-    ├── test_interpol_client.py # InterpolClient birim testleri
-    ├── test_consumer.py        # QueueConsumer birim testleri
-    └── test_app.py             # Flask route testleri
-```
+- **RabbitMQ Dashboard:** `http://localhost:15672` üzerinden girebilirsiniz (Varsayılan User: `guest` Pass: `guest`). Queues tablonuz içinde `interpol_red_notices` öğesine tıklayarak "Purge" diyerek içerdeki sıkışmış tüm eski verileri silme şansınız var.
+- **Fetch Tarama Belleğini Sıfırlamak:** Tarama döngüsü çok uzun olduğu için `fetcher` kaldığı yerden devam edecektir. Veriyi kasıtlı sildiniz ve en baştan çekmek isterseniz terminale şunu girerek `state` dosyasını sıfırlayabilirsiniz:
+  ```bash
+  docker exec interpol_fetcher rm -f /data/scan_state.json
+  docker restart interpol_fetcher
+  ```
+- **Farklı Veritabanı Geçişi:** PostgreSQL yerine tekrar bir Local SQLite veya MySQL geçmek isterseniz docker compose dosyasındaki `DATABASE_URL` adreslerini uygun SQLAlchemy diline çevirmeniz yeterlidir; kod yapısı ORM olduğundan kod tarafında tek değişim yapmanız gerekmez.
 
 ---
-
-## Geliştirme Notları
-
-- **Scan state sıfırlamak için** (yeni tam tarama zorlamak):
-  ```bash
-  docker exec interpol_fetcher rm /data/scan_state.json
-  ```
-- **Veritabanını sorgulamak için**:
-  ```bash
-  docker exec interpol_web python -c \
-    "from web.models import *; from web.config import *; \
-     S = create_session_factory(WebConfig.from_env()); s = S(); \
-     print(s.query(Notice).count())"
-  ```
-- **RabbitMQ yönetim paneli**: `http://localhost:15672` → Queues → `interpol_red_notices`
-- `requirements.txt`: Projenin Python bağımlılıkları.
-- `fetcher/`
-  - `config.py`: Fetcher için environment tabanlı yapılandırma sınıfı.
-  - `interpol_client.py`: Interpol public API'si ile haberleşen istemci ve `RedNotice` veri sınıfı.
-  - `queue_publisher.py`: RabbitMQ kuyruğuna mesaj gönderen sınıf.
-  - `main.py`: Fetcher ana döngüsü (periyodik veri çekimi ve publish).
-  - `Dockerfile`: Fetcher container'ı için Docker imajı.
-- `web/`
-  - `config.py`: Web/consumer tarafı için environment tabanlı konfigürasyon.
-  - `models.py`: SQLAlchemy ile `Notice` modeli ve session factory.
-  - `consumer.py`: RabbitMQ kuyruğunu dinleyen ve veritabanına yazan consumer sınıfı.
-  - `app.py`: Flask uygulaması, `/` endpoint'i ve consumer thread başlatma.
-  - `templates/index.html`: Modern, koyu temalı HTML arayüz.
-  - `Dockerfile`: Web container'ı için Docker imajı.
-- `tests/`
-  - `test_interpol_client.py`: Interpol istemcisi için birim testi.
-
-### Notlar
-
-- Proje **Nesne Tabanlı Programlama** prensiplerine uygun şekilde; konfigürasyon, veri modeli, API istemcisi, kuyruk publisher/consumer gibi roller ayrı sınıflara bölünerek tasarlanmıştır.
-- Tüm kritik değerler environment değişkenleri ile yönetilebilir olduğu için, farklı ortamlara (test, staging, prod) çok az çabayla uyarlanabilir.
-- İstenirse SQLite yerine Postgres gibi başka bir veritabanı çok kolay bir şekilde entegre edilebilir; sadece `DATABASE_URL` değerini uygun SQLAlchemy connection string'i ile değiştirmeniz yeterlidir.
-
+_Bu README otonom bir sistem ile Interpol projeniz için kapsamlı olarak hazırlanmıştır._

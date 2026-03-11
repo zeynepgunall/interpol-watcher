@@ -1,9 +1,14 @@
+"""Web uygulaması yapılandırması — tüm değerler ortam değişkenlerinden okunur."""
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 
 
 @dataclass
 class WebConfig:
+    """Flask web sunucusu ve RabbitMQ bağlantı ayarları."""
+
     rabbitmq_host: str
     rabbitmq_port: int
     rabbitmq_queue_name: str
@@ -12,7 +17,8 @@ class WebConfig:
     database_url: str
 
     @classmethod
-    def from_env(cls) -> "WebConfig":
+    def from_env(cls) -> WebConfig:
+        """Ortam değişkenlerinden yapılandırma oluşturur."""
         return cls(
             rabbitmq_host=os.getenv("RABBITMQ_HOST", "rabbitmq"),
             rabbitmq_port=int(os.getenv("RABBITMQ_PORT", "5672")),

@@ -1,9 +1,9 @@
-"""Canonical schema for the notice payload exchanged via RabbitMQ."""
+"""RabbitMQ üzerinden gönderilen mesajın formatını standart hale getiriyor."""
 from __future__ import annotations
 
 import json
 
-# Every field that travels through the queue; both publisher and consumer import this.
+# Kuyruk mesajında yer alan alanlar
 FIELDS: tuple[str, ...] = (
     "entity_id",
     "name",
@@ -17,10 +17,10 @@ FIELDS: tuple[str, ...] = (
 
 
 def encode(data: dict) -> bytes:
-    """Serialize a notice dict to UTF-8 JSON bytes."""
+    """Notice dict'ini UTF-8 JSON byte'larına serialize eder.Sonra rabbitmq'ya publish ediyor."""
     return json.dumps(data).encode("utf-8")
 
 
 def decode(raw: bytes) -> dict:
-    """Deserialize UTF-8 JSON bytes to a notice dict."""
+    """UTF-8 JSON byte'larını notice dict'ine deserialize eder."""
     return json.loads(raw.decode("utf-8"))
