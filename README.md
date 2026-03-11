@@ -54,17 +54,17 @@ Sistem temel olarak 3 ayrı Docker konteynerinden (Fetcher, RabbitMQ, Web+Consum
 
 ---
 
-## 🚀 Öne Çıkan Özellikler
+##  Öne Çıkan Özellikler
 
 - **Crash-Safe Scan:** Çok uzun süren Interpol taramasında internet koparsa ve script kapanırsa bile `scan_state.json` ile kalındığı bloktan devam edebilme.
 - **Asenkron Kuyruk (RabbitMQ):** Veri toplayıcısının (Fetcher) bekleme yapmadan sadece mesaj gönderme görevini üstlenmesi performansı son derece arttırır.
 - **Güçlü Veritabanı (PostgreSQL):** Docker compose üzerinde otomatik olarak hazır hâle gelen veritabanı yığını.
-- **Anında Alarmlar (UI):** Zaten sistemde olan bir kişi, bir süre sonra Interpol tarafından güncellenirse (örneğin yeri tespit edildi vs.) Consumer bu kaydı veritabanında "🔴 ALARM" olarak (kırmızı nabız efektiyle) belirgin hâle getirir.
+- **Anında Alarmlar (UI):** Zaten sistemde olan bir kişi, bir süre sonra Interpol tarafından güncellenirse (örneğin yeri tespit edildi vs.) Consumer bu kaydı veritabanında "ALARM" olarak (kırmızı nabız efektiyle) belirgin hâle getirir.
 - **Batch Resim İndiricisi:** Şüphelilerin fotoğraflarını direkt diske indiren anti-ban özellikli asenkron (delaylı) ekstra Script. 
 
 ---
 
-## ⚙️ Gereksinimler
+##  Gereksinimler
 
 Proje hiçbir ekstra bağımlılığa ihtiyaç duymadan, doğrudan `docker` altyapısı ile her şeyi ayağa kaldırmaktadır. Sadece şunların yüklü olması gerekir:
 - **Docker** ve **Docker Compose**
@@ -73,7 +73,7 @@ Proje hiçbir ekstra bağımlılığa ihtiyaç duymadan, doğrudan `docker` alty
 
 ---
 
-## 🛠️ Hızlı Kurulum (Docker ile)
+## Hızlı Kurulum (Docker ile)
 
 Gereksinimler sağlandıktan sonra terminal üzerinden sadece 2 komutla tüm sistemi ayağa kaldırabilirsiniz:
 
@@ -99,7 +99,7 @@ docker-compose logs -f web        # Gelen Consumer logları ve Web trafiği
 
 ---
 
-## 🌐 Web Arayüzü ve Sistem Davranışları
+## Web Arayüzü ve Sistem Davranışları
 
 1. **Erişim:** [http://localhost:8000](http://localhost:8000) adresine gittiğinizde web paneli açılacaktır.
 2. **Kırmızı Alarm:** 
@@ -109,7 +109,7 @@ docker-compose logs -f web        # Gelen Consumer logları ve Web trafiği
 
 ---
 
-## 🔑 Çevresel Değişkenler (.env)
+##  Çevresel Değişkenler (.env)
 
 Projeyi derlemeden (rebuild yapmadan) ayarları değiştirebileceğiniz çevreleyici (.env) değişkenlerden bazıları şunlardır:
 
@@ -131,9 +131,9 @@ Projeyi derlemeden (rebuild yapmadan) ayarları değiştirebileceğiniz çevrele
 
 ---
 
-## 🖼️ Fotoğrafları Yerel Olarak İndirme
+## Fotoğrafları Yerel Olarak İndirme
 
-Şüphelere ait fotoğrafların internet erişimleri (Interpol API kısıtlamaları veya expire olması) kapanabilir diye ayrı olarak fotoğrafları veritabanından bulup local diske indirecek özel bir helper (yardımcı script) vardır:
+Şüphelilere ait fotoğrafların internet erişimleri (Interpol API kısıtlamaları veya expire olması) kapanabilir diye ayrı olarak fotoğrafları veritabanından bulup local diske indirecek özel bir helper (yardımcı script) vardır:
 
 **Kurulumu ve Kullanımı:**
 Kendi ana işletim sisteminizde (bilgisayarınızda) bağımlılıkları yükleyin:
@@ -154,7 +154,7 @@ python download_photos.py
 
 ---
 
-## 🧪 Birim Testleri (Pytest)
+## Birim Testleri (Pytest)
 
 Projenin test coverage'ı çok yüksek olacak şekilde `pytest` kullanılarak oluşturulmuştur. Testleri container haricinde kendi ortamınızda test edebilirsiniz. Gerekli kütüphaneleri `pip install -r requirements.txt` ile kurduktan sonra:
 
@@ -173,7 +173,7 @@ pytest tests/test_consumer.py -v
 
 ---
 
-## 👨‍💻 Geliştirici Notları ve İpuçları
+## Geliştirici Notları ve İpuçları
 
 - **RabbitMQ Dashboard:** `http://localhost:15672` üzerinden girebilirsiniz (Varsayılan User: `guest` Pass: `guest`). Queues tablonuz içinde `interpol_red_notices` öğesine tıklayarak "Purge" diyerek içerdeki sıkışmış tüm eski verileri silme şansınız var.
 - **Fetch Tarama Belleğini Sıfırlamak:** Tarama döngüsü çok uzun olduğu için `fetcher` kaldığı yerden devam edecektir. Veriyi kasıtlı sildiniz ve en baştan çekmek isterseniz terminale şunu girerek `state` dosyasını sıfırlayabilirsiniz:
@@ -183,5 +183,3 @@ pytest tests/test_consumer.py -v
   ```
 - **Farklı Veritabanı Geçişi:** PostgreSQL yerine tekrar bir Local SQLite veya MySQL geçmek isterseniz docker compose dosyasındaki `DATABASE_URL` adreslerini uygun SQLAlchemy diline çevirmeniz yeterlidir; kod yapısı ORM olduğundan kod tarafında tek değişim yapmanız gerekmez.
 
----
-_Bu README otonom bir sistem ile Interpol projeniz için kapsamlı olarak hazırlanmıştır._
