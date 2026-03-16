@@ -54,7 +54,7 @@ class QueuePublisher:
 
             for notice in notices:
                 payload = _encode(notice.__dict__) #veriyi JSON'a çevirir.
-                channel.basic_publdeliveish(
+                channel.basic_publish(
                     exchange="",
                     routing_key=self._config.rabbitmq_queue_name,
                     body=payload,

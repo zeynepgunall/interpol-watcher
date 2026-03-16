@@ -117,6 +117,20 @@ def test_second_arrival_changed_data_returns_updated(service):
     assert result.is_alarm is True
 
 
+def test_updated_notice_still_triggers_detail_fetch(service, monkeypatch):
+    calls: list[str] = []
+
+    def fake_maybe_fetch_detail(session, entity_id):
+        calls.append(entity_id)
+
+    monkeypatch.setattr(service, "_maybe_fetch_detail", fake_maybe_fetch_detail)
+
+    service.upsert(_payload())
+    service.upsert(_payload(name="SMITH"))
+
+    assert calls == ["2024/1111", "2024/1111"]
+
+
 def test_duplicate_produces_single_row(service, session_factory):
     service.upsert(_payload())
     service.upsert(_payload())
@@ -187,6 +201,34 @@ def test_missing_entity_id_writes_nothing(service, session_factory):
         assert session.query(Notice).count() == 0
     finally:
         session.close()
+
+
+def test_backfill_missing_details_only_targets_missing_rows(service, session_factory, monkeypatch):
+    service.upsert(_payload(entity_id="2024/0001"))
+    service.upsert(_payload(entity_id="2024/0002"))
+
+    session = session_factory()
+    try:
+        ready = session.query(Notice).filter(Notice.entity_id == "2024/0002").one()
+        ready.detail_fetched_at = ready.created_at
+        session.commit()
+    finally:
+        session.close()
+
+    fetched: list[str] = []
+
+    def fake_maybe_fetch_detail(session, entity_id):
+        fetched.append(entity_id)
+        notice = session.query(Notice).filter(Notice.entity_id == entity_id).one()
+        notice.detail_fetched_at = notice.created_at
+        session.commit()
+
+    monkeypatch.setattr(service, "_maybe_fetch_detail", fake_maybe_fetch_detail)
+
+    filled = service.backfill_missing_details(limit=10, request_delay_seconds=0)
+
+    assert filled == 1
+    assert fetched == ["2024/0001"]
 
 
 # ---------------------------------------------------------------------------

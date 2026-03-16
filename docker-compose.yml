@@ -9,12 +9,30 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
-    healthcheck: #diğer servislerin RabbitMQ'ya bağlanmadan önce hazır olup olmadığını kontrol etmek için  ekleniyor
+    healthcheck:
+      #diğer servislerin RabbitMQ'ya bağlanmadan önce hazır olup olmadığını kontrol etmek için  ekleniyor
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
-
+  minio:
+    image: minio/minio:latest
+    container_name: interpol_minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # API / S3 endpoint
+      - "9001:9001"   # Web UI (MinIO Console)
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   postgres:
     image: postgres:16-alpine
     container_name: interpol_postgres
@@ -28,12 +46,13 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data #veriler konteyner silinse bile kalır
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U interpol" ]
+      test: [ "CMD-SHELL", "pg_isready -U interpol -d interpol_db" ]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  fetcher: #kendi Dockerfile'ından build ediliyor RabbitMQ sağlıklı hale gelince başlatılır
+  fetcher:
+    #kendi Dockerfile'ından build ediliyor RabbitMQ sağlıklı hale gelince başlatılır
     build:
       context: .
       dockerfile: fetcher/Dockerfile
@@ -83,12 +102,23 @@ services:
       - "8000:8000"
     environment:
       FLASK_ENV: ${FLASK_ENV:-production}
+      INTERPOL_BASE_URL: ${INTERPOL_BASE_URL:-https://ws-public.interpol.int}
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-interpol_red_notices}
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       DATABASE_URL: ${DATABASE_URL:-postgresql://interpol:interpol123@postgres:5432/interpol_db}
+      DETAIL_BACKFILL_ENABLED: ${DETAIL_BACKFILL_ENABLED:-true}
+      DETAIL_BACKFILL_BATCH_SIZE: ${DETAIL_BACKFILL_BATCH_SIZE:-25}
+      DETAIL_BACKFILL_IDLE_SECONDS: ${DETAIL_BACKFILL_IDLE_SECONDS:-30}
+      DETAIL_REQUEST_DELAY_SECONDS: ${DETAIL_REQUEST_DELAY_SECONDS:-1.5}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-interpol-photos}
+      MINIO_PUBLIC_URL: http://localhost:9000
+ 
     volumes:
       - web_data:/data
     healthcheck:
@@ -102,4 +132,4 @@ services:
 volumes:
   web_data:
   pg_data:
-  
+  minio_data:

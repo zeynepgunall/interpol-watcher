@@ -38,6 +38,7 @@ class InterpolClient:
         self.base_url = base_url.rstrip("/")
         self._session = requests.Session() 
         self._ban_count = 0
+        self._warmed_up = False
 
     def _headers(self, *, json: bool = False) -> dict[str, str]:
         accept = (

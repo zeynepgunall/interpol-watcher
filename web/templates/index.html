@@ -39,6 +39,7 @@
             flex-direction: column;
             padding: 15px;
             transition: transform 0.2s;
+            cursor: pointer;
         }
 
         .card:hover {
@@ -107,8 +108,15 @@
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
         }
 
         .timestamp {
@@ -219,6 +227,174 @@
             color: #ccc;
             pointer-events: none;
         }
+
+        /* Detail Modal */
+        .gallery-wrap {
+            position: relative;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+            aspect-ratio: 3/4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gallery-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .gallery-img.active {
+            display: block;
+        }
+
+        .gallery-placeholder {
+            font-size: 72px;
+            color: #ccc;
+        }
+
+        .gallery-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.45);
+            border: none;
+            color: #fff;
+            font-size: 1.4rem;
+            padding: 6px 13px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .gallery-nav:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .gallery-prev {
+            left: 6px;
+        }
+
+        .gallery-next {
+            right: 6px;
+        }
+
+        .gallery-counter {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.45);
+            color: #fff;
+            font-size: 0.75rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+
+        .detail-section {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 11px 14px;
+            margin-bottom: 10px;
+        }
+
+        .detail-section h6 {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #888;
+            margin-bottom: 7px;
+        }
+
+        .physical-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .physical-item label {
+            font-size: 0.7rem;
+            color: #999;
+            display: block;
+            margin-bottom: 1px;
+        }
+
+        .physical-item span {
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .badge-tag {
+            display: inline-block;
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            margin: 2px;
+            color: #333;
+        }
+
+        .charges-text {
+            font-size: 0.88rem;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        #modal-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 260px;
+        }
+
+        /* Change history */
+        .change-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.82rem;
+        }
+
+        .change-row:last-child {
+            border-bottom: none;
+        }
+
+        .change-field {
+            font-weight: 600;
+            color: #555;
+            min-width: 110px;
+            flex-shrink: 0;
+        }
+
+        .change-old {
+            color: #dc3545;
+            text-decoration: line-through;
+            flex: 1;
+        }
+
+        .change-arrow {
+            color: #aaa;
+            flex-shrink: 0;
+        }
+
+        .change-new {
+            color: #198754;
+            flex: 1;
+        }
+
+        .change-time {
+            font-size: 0.72rem;
+            color: #aaa;
+            min-width: 120px;
+            text-align: right;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 
@@ -229,7 +405,7 @@
         <div class="meta">
             Records: <strong>{{ total }}</strong>
             {% if total_alarms > 0 %}
-            &nbsp;&nbsp;<span class="alarm-count">&#9888; Alarms: {{ total_alarms }}</span>
+            &nbsp;&nbsp;<span class="alarm-count">Alarms: {{ total_alarms }}</span>
             {% endif %}
             {% if total_pages > 1 %}
             &nbsp;&nbsp;Page {{ page }} / {{ total_pages }}
@@ -242,53 +418,58 @@
                 <select name="nat">
                     <option value="">All nationalities</option>
                     {% for n in nationalities %}
-                    <option value="{{ n }}" {% if n == nat %}selected{% endif %}>{{ n }}</option>
+                    <option value="{{ n }}" {% if n==nat %}selected{% endif %}>{{ n }}</option>
                     {% endfor %}
                 </select>
+                <select name="sort">
+                    <option value="newest" {% if sort=="newest" %}selected{% endif %}>Newest first</option>
+                    <option value="oldest" {% if sort=="oldest" %}selected{% endif %}>Oldest first</option>
+                    <option value="name_asc" {% if sort=="name_asc" %}selected{% endif %}>Surname A–Z</option>
+                    <option value="name_desc" {% if sort=="name_desc" %}selected{% endif %}>Surname Z–A</option>
+                </select>
                 <button type="submit">Search</button>
-                {% if q or nat %}<a href="/" class="clr">Clear</a>{% endif %}
+                {% if q or nat or sort != "newest" %}<a href="/" class="clr">Clear</a>{% endif %}
             </div>
         </form>
 
         {% if notices %}
         <div class="card-container">
             {% for notice in notices %}
-            <div class="card {% if notice.is_alarm_active %}alarm-active{% endif %}">
-                <img src="/photos/{{ notice.entity_id }}"
-                    alt="Notice Image"
-                    loading="lazy">
-
+            <div class="card {% if notice.is_alarm_active %}alarm-active{% endif %}"
+                data-entity-id="{{ notice.entity_id }}">
+                <img src="/photos/{{ notice.entity_id }}" alt="Notice Image" loading="lazy">
                 <div class="card-content">
                     <h2>
                         {% if notice.name or notice.forename %}
-                            {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
-                            {% elif notice.name %}{{ notice.name }}
-                            {% else %}{{ notice.forename }}{% endif %}
+                        {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
+                        {% elif notice.name %}{{ notice.name }}
+                        {% else %}{{ notice.forename }}{% endif %}
                         {% else %}&mdash;{% endif %}
-
                         {% if notice.is_alarm_active %}
                         <span class="alarm-badge-blink">UPDATED</span>
                         {% elif notice.is_updated %}
                         <span class="alarm-badge">UPDATED</span>
                         {% endif %}
                     </h2>
-
                     <p><strong>Date of Birth:</strong> {{ notice.date_of_birth or '—' }}</p>
                     <p>
                         <strong>Nationality:</strong>
-                        <span class="flag" data-code="{{ notice.nationality or '' }}"></span>{{ notice.nationality or '—' }}
+                        <span class="flag" data-code="{{ notice.nationality or '' }}"></span>{{ notice.nationality or
+                        '—' }}
                     </p>
                     {% if notice.all_nationalities %}
                     <p><strong>All Nationalities:</strong> {{ notice.all_nationalities }}</p>
                     {% endif %}
                     <p class="dim">Ref: {{ notice.entity_id }}</p>
-                    <p class="timestamp">Added: {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at else '—' }}</p>
+                    <p class="timestamp">Added: {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at
+                        else '—' }}</p>
                     {% if notice.is_updated %}
-                    <p class="timestamp" style="color:#cc0000;">&#9888; Updated: {{ notice.updated_at.strftime('%Y-%m-%d %H:%M') if notice.updated_at else '' }}</p>
+                    <p class="timestamp" style="color:#cc0000;">Updated: {{ notice.updated_at.strftime('%Y-%m-%d %H:%M')
+                        if notice.updated_at else '' }}</p>
                     {% endif %}
-
                     <div class="links">
-                        <a href="https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices/{{ notice.entity_id.replace('/', '-') }}" target="_blank">More Info</a>
+                        <a href="https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices/{{ notice.entity_id.replace('/', '-') }}"
+                            target="_blank" onclick="event.stopPropagation()">More Info ↗</a>
                     </div>
                 </div>
             </div>
@@ -297,13 +478,18 @@
 
         {% if total_pages > 1 %}
         <div id="pages">
-            <a href="?page=1&q={{ q }}&nat={{ nat }}" {% if page == 1 %}class="off"{% endif %}>&#171;</a>
-            <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}" {% if page == 1 %}class="off"{% endif %}>&#8249;</a>
+            <a href="?page=1&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==1 %}class="off" {% endif
+                %}>&laquo;</a>
+            <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==1 %}class="off" {% endif
+                %}>&lsaquo;</a>
             {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
-            <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}" class="{% if p == page %}cur{% endif %}">{{ p }}</a>
+            <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" class="{% if p == page %}cur{% endif %}">{{
+                p }}</a>
             {% endfor %}
-            <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}" {% if page == total_pages %}class="off"{% endif %}>&#8250;</a>
-            <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}" {% if page == total_pages %}class="off"{% endif %}>&#187;</a>
+            <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==total_pages %}class="off"
+                {% endif %}>&rsaquo;</a>
+            <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==total_pages
+                %}class="off" {% endif %}>&raquo;</a>
         </div>
         {% endif %}
 
@@ -315,52 +501,302 @@
         {% endif %}
     </div>
 
+    <!-- Detail Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modal-title">—</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="modal-loading">
+                        <div class="spinner-border text-danger" role="status">
+                            <span class="visually-hidden">Loading…</span>
+                        </div>
+                    </div>
+
+                    <div id="modal-content-inner" style="display:none">
+                        <div class="row g-3">
+
+                            <!-- Left: gallery + identity -->
+                            <div class="col-md-5">
+                                <div class="gallery-wrap" id="gallery-wrap">
+                                    <span class="gallery-placeholder" id="gallery-placeholder">No Photo</span>
+                                    <button class="gallery-nav gallery-prev" id="gallery-prev" onclick="galleryNav(-1)"
+                                        style="display:none">&#8249;</button>
+                                    <button class="gallery-nav gallery-next" id="gallery-next" onclick="galleryNav(+1)"
+                                        style="display:none">&#8250;</button>
+                                    <span class="gallery-counter" id="gallery-counter" style="display:none"></span>
+                                </div>
+
+                                <div class="detail-section mt-3">
+                                    <h6>Identity</h6>
+                                    <div class="physical-grid">
+                                        <div class="physical-item"><label>Date of Birth</label><span id="d-dob">—</span>
+                                        </div>
+                                        <div class="physical-item"><label>Sex</label><span id="d-sex">—</span></div>
+                                        <div class="physical-item"><label>Place of Birth</label><span
+                                                id="d-pob">—</span></div>
+                                        <div class="physical-item"><label>Country of Birth</label><span
+                                                id="d-cob">—</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right: details -->
+                            <div class="col-md-7">
+                                <div class="detail-section">
+                                    <h6>Charges</h6>
+                                    <div class="charges-text" id="d-charges">—</div>
+                                    <div id="d-translation-wrap" style="display:none; margin-top:8px">
+                                        <small class="text-muted">Translation:</small>
+                                        <div class="charges-text" id="d-translation"
+                                            style="color:#666; font-size:.82rem"></div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <h6>Issuing Countries</h6>
+                                    <div id="d-countries">—</div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <h6>Physical Description</h6>
+                                    <div class="physical-grid">
+                                        <div class="physical-item"><label>Height</label><span id="d-height">—</span>
+                                        </div>
+                                        <div class="physical-item"><label>Weight</label><span id="d-weight">—</span>
+                                        </div>
+                                        <div class="physical-item"><label>Eye Colour</label><span id="d-eyes">—</span>
+                                        </div>
+                                        <div class="physical-item"><label>Hair</label><span id="d-hair">—</span></div>
+                                    </div>
+                                    <div id="d-marks-wrap" style="display:none; margin-top:8px">
+                                        <label style="font-size:.7rem; color:#999">Distinguishing marks</label>
+                                        <div style="font-size:.85rem; color:#444" id="d-marks"></div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <h6>Languages Spoken</h6>
+                                    <div id="d-languages">—</div>
+                                </div>
+
+                                <div class="detail-section">
+                                    <h6>Nationalities</h6>
+                                    <div id="d-nationalities">—</div>
+                                </div>
+
+                                <!-- Change History -->
+                                <div class="detail-section" id="d-changes-wrap" style="display:none">
+                                    <h6>⚠ Change History</h6>
+                                    <div id="d-changes"></div>
+                                </div>
+
+                                <div style="margin-top: 4px">
+                                    <a id="d-interpol-link" href="#" target="_blank"
+                                        class="btn btn-sm btn-outline-danger">
+                                        View on Interpol.int ↗
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script id="page-state" type="application/json">{"total": {{ total }}, "alarms": {{ total_alarms }}}</script>
     <script>
-        // Country flag emojis from ISO country codes
-        document.querySelectorAll('.flag[data-code]').forEach(el => {
-            const c = el.dataset.code;
-            if (c && c.length === 2)
-                el.textContent = String.fromCodePoint(
-                    ...[...c.toUpperCase()].map(ch => 0x1F1E6 - 65 + ch.charCodeAt(0))
-                ) + ' ';
-        });
+        document.querySelectorAll('.flag[data-code]').forEach(el => { el.textContent = ''; });
 
         (function () {
             const ps = JSON.parse(document.getElementById('page-state').textContent);
             let knownTotal = ps.total;
             let knownAlarms = ps.alarms;
 
-            // SSE: new record, update, or sweep triggers page reload
             function startSSE() {
                 const es = new EventSource('/api/stream');
                 es.onmessage = function (e) {
-                    if (e.data === 'INSERTED' || e.data === 'UPDATED' || e.data === 'SWEPT') {
-                        location.reload();
-                    }
+                    if (e.data === 'INSERTED' || e.data === 'UPDATED' || e.data === 'SWEPT') location.reload();
                 };
-                es.onerror = function () {
-                    es.close();
-                    setTimeout(pollFallback, 10000);
-                };
+                es.onerror = function () { es.close(); setTimeout(pollFallback, 10000); };
             }
 
-            // Polling fallback when SSE is unavailable
             function pollFallback() {
                 fetch('/api/status')
                     .then(r => r.json())
                     .then(d => {
-                        if (d.total !== knownTotal || d.alarms !== knownAlarms) {
-                            location.reload();
-                        } else {
-                            setTimeout(pollFallback, 10000);
-                        }
+                        if (d.total !== knownTotal || d.alarms !== knownAlarms) location.reload();
+                        else setTimeout(pollFallback, 10000);
                     })
                     .catch(() => setTimeout(pollFallback, 10000));
             }
 
             startSSE();
         })();
+
+        const SEX_LABELS = { M: 'Male', F: 'Female', U: 'Unknown' };
+        const EYE_CODES = { BRO: 'Brown', BLU: 'Blue', GRE: 'Green', BLA: 'Black', GRY: 'Grey', HAZ: 'Hazel', BLN: 'Blond', RED: 'Red', WHI: 'White' };
+        const HAIR_CODES = { BLA: 'Black', BRO: 'Brown', BLN: 'Blond/Strawberry', RED: 'Red', GRY: 'Grey', WHI: 'White', BAL: 'Bald' };
+        const LANG_NAMES = { ENG: 'English', TUR: 'Turkish', RUS: 'Russian', UKR: 'Ukrainian', FRA: 'French', DEU: 'German', SPA: 'Spanish', ARA: 'Arabic', CHI: 'Chinese', ITA: 'Italian', POR: 'Portuguese', POL: 'Polish', NLD: 'Dutch', SWE: 'Swedish', NOR: 'Norwegian', FIN: 'Finnish', HUN: 'Hungarian', RUM: 'Romanian', CZE: 'Czech', SLO: 'Slovak' };
+        const FIELD_LABELS = { name: 'Surname', forename: 'Forename', date_of_birth: 'Date of Birth', nationality: 'Nationality', arrest_warrant: 'Arrest Warrant', charges: 'Charges', issuing_countries: 'Issuing Countries', place_of_birth: 'Place of Birth', country_of_birth_id: 'Country of Birth', height: 'Height', weight: 'Weight', eyes_colors_id: 'Eye Colour', hairs_id: 'Hair', languages_spoken: 'Languages' };
+
+        function decodeCodes(val, table) {
+            if (!val) return '—';
+            return val.split(',').map(c => table[c.trim()] || c.trim()).join(', ');
+        }
+
+        let galleryImages = [];
+        let galleryIdx = 0;
+
+        function galleryNav(dir) {
+            galleryIdx = (galleryIdx + dir + galleryImages.length) % galleryImages.length;
+            renderGallery();
+        }
+
+        function renderGallery() {
+            document.querySelectorAll('.gallery-img').forEach(el => el.remove());
+            const wrap = document.getElementById('gallery-wrap');
+            const placeholder = document.getElementById('gallery-placeholder');
+            const prev = document.getElementById('gallery-prev');
+            const next = document.getElementById('gallery-next');
+            const counter = document.getElementById('gallery-counter');
+
+            if (galleryImages.length === 0) {
+                placeholder.style.display = '';
+                prev.style.display = 'none';
+                next.style.display = 'none';
+                counter.style.display = 'none';
+                return;
+            }
+            placeholder.style.display = 'none';
+            galleryImages.forEach((url, i) => {
+                const img = document.createElement('img');
+                img.className = 'gallery-img' + (i === galleryIdx ? ' active' : '');
+                img.src = url;
+                img.alt = 'Photo ' + (i + 1);
+                img.onerror = () => { img.style.display = 'none'; };
+                wrap.insertBefore(img, prev);
+            });
+            if (galleryImages.length > 1) {
+                prev.style.display = '';
+                next.style.display = '';
+                counter.style.display = '';
+                counter.textContent = (galleryIdx + 1) + ' / ' + galleryImages.length;
+            } else {
+                prev.style.display = 'none';
+                next.style.display = 'none';
+                counter.style.display = 'none';
+            }
+        }
+
+        async function openDetail(entityId) {
+            document.getElementById('modal-title').textContent = '…';
+            document.getElementById('modal-loading').style.display = 'flex';
+            document.getElementById('modal-content-inner').style.display = 'none';
+
+            const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+            modal.show();
+
+            const urlId = entityId.replace('/', '-');
+            let data;
+            try {
+                const res = await fetch('/api/notice/' + urlId);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                data = await res.json();
+            } catch (e) {
+                document.getElementById('modal-loading').innerHTML = '<div class="text-danger">Failed to load details: ' + e.message + '</div>';
+                return;
+            }
+
+            const parts = [data.forename, data.name].filter(Boolean);
+            document.getElementById('modal-title').textContent = parts.length ? parts.join(' ') : entityId;
+
+            galleryImages = data.image_urls || [];
+            if (galleryImages.length === 0 && data.photo_url) galleryImages = [data.photo_url];
+            galleryIdx = 0;
+            renderGallery();
+
+            setText('d-dob', data.date_of_birth || '—');
+            setText('d-sex', SEX_LABELS[data.sex_id] || data.sex_id || '—');
+            setText('d-pob', data.place_of_birth || '—');
+            setText('d-cob', data.country_of_birth_id || '—');
+
+            setText('d-charges', data.charges || 'No information available');
+            if (data.charge_translation) {
+                setText('d-translation', data.charge_translation);
+                document.getElementById('d-translation-wrap').style.display = '';
+            } else {
+                document.getElementById('d-translation-wrap').style.display = 'none';
+            }
+
+            const countriesEl = document.getElementById('d-countries');
+            if (data.issuing_countries) {
+                countriesEl.innerHTML = data.issuing_countries.split(',').map(c => '<span class="badge-tag">' + c.trim() + '</span>').join('');
+            } else { countriesEl.textContent = '—'; }
+
+            setText('d-height', data.height ? data.height + ' m' : '—');
+            setText('d-weight', data.weight ? data.weight + ' kg' : '—');
+            setText('d-eyes', decodeCodes(data.eyes_colors_id, EYE_CODES));
+            setText('d-hair', decodeCodes(data.hairs_id, HAIR_CODES));
+            if (data.distinguishing_marks) {
+                setText('d-marks', data.distinguishing_marks);
+                document.getElementById('d-marks-wrap').style.display = '';
+            } else { document.getElementById('d-marks-wrap').style.display = 'none'; }
+
+            const langsEl = document.getElementById('d-languages');
+            if (data.languages_spoken) {
+                langsEl.innerHTML = data.languages_spoken.split(',').map(l => '<span class="badge-tag">' + (LANG_NAMES[l.trim()] || l.trim()) + '</span>').join('');
+            } else { langsEl.textContent = '—'; }
+
+            const natsEl = document.getElementById('d-nationalities');
+            const nats = data.all_nationalities ? data.all_nationalities.split(',') : (data.nationality ? [data.nationality] : []);
+            if (nats.length) {
+                natsEl.innerHTML = nats.map(n => '<span class="badge-tag">' + n.trim() + '</span>').join('');
+            } else { natsEl.textContent = '—'; }
+
+            // Change history
+            const changesWrap = document.getElementById('d-changes-wrap');
+            const changesEl = document.getElementById('d-changes');
+            const history = data.change_history || [];
+            if (history.length > 0) {
+                changesWrap.style.display = '';
+                changesEl.innerHTML = history.map(c => {
+                    const label = FIELD_LABELS[c.field_name] || c.field_name;
+                    const oldVal = c.old_value || '—';
+                    const newVal = c.new_value || '—';
+                    const dt = c.changed_at ? new Date(c.changed_at).toLocaleString() : '';
+                    return '<div class="change-row">' +
+                        '<span class="change-field">' + label + '</span>' +
+                        '<span class="change-old">' + oldVal + '</span>' +
+                        '<span class="change-arrow">→</span>' +
+                        '<span class="change-new">' + newVal + '</span>' +
+                        '<span class="change-time">' + dt + '</span>' +
+                        '</div>';
+                }).join('');
+            } else {
+                changesWrap.style.display = 'none';
+            }
+
+            document.getElementById('d-interpol-link').href =
+                'https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices/' + urlId;
+
+            document.getElementById('modal-loading').style.display = 'none';
+            document.getElementById('modal-content-inner').style.display = '';
+        }
+
+        function setText(id, val) { document.getElementById(id).textContent = val; }
+
+        document.querySelectorAll('.card[data-entity-id]').forEach(card => {
+            card.addEventListener('click', event => {
+                if (event.target.closest('a')) return;
+                const entityId = card.dataset.entityId;
+                if (entityId) openDetail(entityId);
+            });
+        });
     </script>
 </body>
 
