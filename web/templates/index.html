@@ -4,11 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <title>Interpol Red Notice Register</title>
     <style>
         body {
@@ -27,7 +24,6 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
-            grid-auto-rows: minmax(200px, auto);
         }
 
         .card {
@@ -43,20 +39,21 @@
         }
 
         .card:hover {
-            transform: scale(1.05);
+            transform: scale(1.02);
         }
 
         .card.alarm-active {
             border: 2px solid #ff4d4d;
-            box-shadow: 0 0 15px rgba(255, 77, 77, 0.4);
             background-color: #fff8f8;
         }
 
+        /* Ana sayfa resimleri: Yoksa beyaz kalsın */
         .card img {
             width: 100%;
             height: 200px;
             object-fit: cover;
             border-bottom: 1px solid #ddd;
+            background: #fff;
         }
 
         .card-content {
@@ -64,46 +61,22 @@
         }
 
         .card-content h2 {
-            font-size: 1.2em;
+            font-size: 1.1em;
             margin: 0;
-        }
-
-        .card-content p {
-            margin: 5px 0;
-            color: #555;
-        }
-
-        .card-content a {
-            display: inline-block;
-            margin-top: 10px;
-            color: #007bff;
-            text-decoration: none;
-        }
-
-        .card-content a:hover {
-            text-decoration: underline;
-        }
-
-        .alarm-badge {
-            background-color: #ff4d4d;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-size: 0.8em;
             font-weight: bold;
-            margin-left: 10px;
-            vertical-align: middle;
         }
 
+        .alarm-badge,
         .alarm-badge-blink {
             background-color: #ff4d4d;
             color: white;
-            padding: 3px 8px;
-            border-radius: 5px;
-            font-size: 0.8em;
-            font-weight: bold;
-            margin-left: 10px;
-            vertical-align: middle;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
+
+        .alarm-badge-blink {
             animation: blink 0.8s step-start infinite;
         }
 
@@ -120,14 +93,13 @@
         }
 
         .timestamp {
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: #888;
-            margin-top: 10px;
-            font-style: italic;
+            margin-top: 5px;
         }
 
         .dim {
-            font-size: 0.8em;
+            font-size: 0.75em;
             color: #aaa;
         }
 
@@ -136,108 +108,27 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-            align-items: center;
         }
 
-        .search-bar input[type="text"] {
-            padding: 10px;
-            font-size: 16px;
-            width: 300px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        .search-bar select {
-            padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
+        .search-bar input,
+        .search-bar select,
         .search-bar button {
-            padding: 10px 15px;
-            font-size: 16px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
+            padding: 8px;
             border-radius: 5px;
-            cursor: pointer;
+            border: 1px solid #ccc;
         }
 
-        .search-bar button:hover {
-            background-color: #0056b3;
-        }
-
-        .search-bar a.clr {
-            font-size: 14px;
-            color: #888;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-
-        .meta {
-            font-size: 0.9em;
-            color: #888;
-            margin-bottom: 16px;
-        }
-
-        .meta .alarm-count {
-            color: #cc0000;
-            font-weight: bold;
-        }
-
-        #empty {
-            text-align: center;
-            padding: 60px 16px;
-            color: #888;
-            font-size: 14px;
-        }
-
-        #pages {
-            display: flex;
-            justify-content: center;
-            gap: 4px;
-            margin-top: 24px;
-            flex-wrap: wrap;
-        }
-
-        #pages a {
-            font-size: 13px;
-            padding: 5px 12px;
-            background: #fff;
-            color: #555;
-            text-decoration: none;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        #pages a:hover {
-            background: #e9ecef;
-            color: #333;
-        }
-
-        #pages a.cur {
-            background: #007bff;
-            color: #fff;
-            font-weight: bold;
-            border-color: #007bff;
-        }
-
-        #pages a.off {
-            color: #ccc;
-            pointer-events: none;
-        }
-
-        /* Detail Modal */
+        /* Modal - Bembeyaz Galeri */
         .gallery-wrap {
             position: relative;
-            background: #f0f0f0;
+            background: #fff;
             border-radius: 6px;
             overflow: hidden;
             aspect-ratio: 3/4;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 1px solid #eee;
         }
 
         .gallery-img {
@@ -252,148 +143,116 @@
         }
 
         .gallery-placeholder {
-            font-size: 72px;
-            color: #ccc;
+            display: none;
         }
+
+        /* Yazıyı tamamen kaldırdık */
 
         .gallery-nav {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(0, 0, 0, 0.3);
             border: none;
             color: #fff;
-            font-size: 1.4rem;
-            padding: 6px 13px;
+            font-size: 1.5rem;
+            padding: 5px 12px;
             border-radius: 4px;
             cursor: pointer;
-            z-index: 2;
-        }
-
-        .gallery-nav:hover {
-            background: rgba(0, 0, 0, 0.7);
+            z-index: 5;
         }
 
         .gallery-prev {
-            left: 6px;
+            left: 10px;
         }
 
         .gallery-next {
-            right: 6px;
+            right: 10px;
         }
 
         .gallery-counter {
             position: absolute;
-            bottom: 8px;
+            bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(0, 0, 0, 0.3);
             color: #fff;
-            font-size: 0.75rem;
-            padding: 2px 10px;
+            font-size: 0.8rem;
+            padding: 2px 8px;
             border-radius: 10px;
         }
 
         .detail-section {
             background: #f8f9fa;
             border-radius: 6px;
-            padding: 11px 14px;
+            padding: 12px;
             margin-bottom: 10px;
         }
 
         .detail-section h6 {
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #888;
-            margin-bottom: 7px;
+            color: #777;
+            margin-bottom: 8px;
+            font-weight: bold;
         }
 
         .physical-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .physical-item label {
-            font-size: 0.7rem;
-            color: #999;
-            display: block;
-            margin-bottom: 1px;
-        }
-
-        .physical-item span {
-            font-size: 0.9rem;
-            color: #333;
+            gap: 10px;
         }
 
         .badge-tag {
             display: inline-block;
             background: #e9ecef;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
             padding: 2px 8px;
+            border-radius: 4px;
             font-size: 0.8rem;
             margin: 2px;
-            color: #333;
+            border: 1px solid #ddd;
         }
 
-        .charges-text {
-            font-size: 0.88rem;
-            color: #333;
-            line-height: 1.6;
+        .detail-item small {
+            color: #777;
+            display: block;
+            margin-bottom: 2px;
         }
 
-        #modal-loading {
+        .detail-item span,
+        .detail-item div {
+            font-size: 0.9rem;
+            color: #222;
+            word-break: break-word;
+        }
+
+        .history-list {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 260px;
-        }
-
-        /* Change history */
-        .change-row {
-            display: flex;
+            flex-direction: column;
             gap: 8px;
-            align-items: flex-start;
-            padding: 6px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 0.82rem;
+            max-height: 220px;
+            overflow-y: auto;
         }
 
-        .change-row:last-child {
-            border-bottom: none;
+        .history-item {
+            background: #fff;
+            border: 1px solid #e4e4e4;
+            border-radius: 6px;
+            padding: 8px 10px;
         }
 
-        .change-field {
-            font-weight: 600;
-            color: #555;
-            min-width: 110px;
-            flex-shrink: 0;
+        .history-item strong {
+            font-size: 0.85rem;
         }
 
-        .change-old {
-            color: #dc3545;
-            text-decoration: line-through;
-            flex: 1;
+        .history-item small {
+            color: #777;
+            display: block;
+            margin-bottom: 4px;
         }
 
-        .change-arrow {
-            color: #aaa;
-            flex-shrink: 0;
-        }
-
-        .change-new {
-            color: #198754;
-            flex: 1;
-        }
-
-        .change-time {
-            font-size: 0.72rem;
-            color: #aaa;
-            min-width: 120px;
-            text-align: right;
-            flex-shrink: 0;
+        .mono {
+            font-family: Consolas, Monaco, monospace;
         }
     </style>
 </head>
@@ -402,204 +261,120 @@
     <div class="container">
         <h1>Interpol Red Notice Register</h1>
 
-        <div class="meta">
+        <div class="meta mb-3">
             Records: <strong>{{ total }}</strong>
-            {% if total_alarms > 0 %}
-            &nbsp;&nbsp;<span class="alarm-count">Alarms: {{ total_alarms }}</span>
-            {% endif %}
-            {% if total_pages > 1 %}
-            &nbsp;&nbsp;Page {{ page }} / {{ total_pages }}
-            {% endif %}
+            {% if total_alarms > 0 %} | <span class="text-danger">Alarms: {{ total_alarms }}</span>{% endif %}
         </div>
 
-        <form action="/" method="get">
-            <div class="search-bar">
-                <input type="text" name="q" placeholder="Surname or forename&hellip;" value="{{ q }}" />
-                <select name="nat">
-                    <option value="">All nationalities</option>
-                    {% for n in nationalities %}
-                    <option value="{{ n }}" {% if n==nat %}selected{% endif %}>{{ n }}</option>
-                    {% endfor %}
-                </select>
-                <select name="sort">
-                    <option value="newest" {% if sort=="newest" %}selected{% endif %}>Newest first</option>
-                    <option value="oldest" {% if sort=="oldest" %}selected{% endif %}>Oldest first</option>
-                    <option value="name_asc" {% if sort=="name_asc" %}selected{% endif %}>Surname A–Z</option>
-                    <option value="name_desc" {% if sort=="name_desc" %}selected{% endif %}>Surname Z–A</option>
-                </select>
-                <button type="submit">Search</button>
-                {% if q or nat or sort != "newest" %}<a href="/" class="clr">Clear</a>{% endif %}
-            </div>
+        <form action="/" method="get" class="search-bar">
+            <input type="text" name="q" placeholder="Search name..." value="{{ q }}">
+            <select name="nat">
+                <option value="">All nationalities</option>
+                {% for n in nationalities %}<option value="{{ n }}" {% if n==nat %}selected{% endif %}>{{ n }}</option>
+                {% endfor %}
+            </select>
+            <select name="sort">
+                <option value="newest" {% if sort=="newest" %}selected{% endif %}>Newest first</option>
+                <option value="oldest" {% if sort=="oldest" %}selected{% endif %}>Oldest first</option>
+                <option value="name_asc" {% if sort=="name_asc" %}selected{% endif %}>Surname A-Z</option>
+                <option value="name_desc" {% if sort=="name_desc" %}selected{% endif %}>Surname Z-A</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if q or nat or sort != "newest" %}<a href="/" class="btn btn-link text-secondary">Clear</a>{% endif %}
         </form>
 
-        {% if notices %}
         <div class="card-container">
             {% for notice in notices %}
             <div class="card {% if notice.is_alarm_active %}alarm-active{% endif %}"
                 data-entity-id="{{ notice.entity_id }}">
-                <img src="/photos/{{ notice.entity_id }}" alt="Notice Image" loading="lazy">
+                <img src="/photos/{{ notice.entity_id }}" alt="" loading="lazy" onerror="this.style.opacity='0'">
                 <div class="card-content">
                     <h2>
-                        {% if notice.name or notice.forename %}
-                        {% if notice.name and notice.forename %}{{ notice.name }}, {{ notice.forename }}
-                        {% elif notice.name %}{{ notice.name }}
-                        {% else %}{{ notice.forename }}{% endif %}
-                        {% else %}&mdash;{% endif %}
-                        {% if notice.is_alarm_active %}
-                        <span class="alarm-badge-blink">UPDATED</span>
-                        {% elif notice.is_updated %}
-                        <span class="alarm-badge">UPDATED</span>
-                        {% endif %}
+                        {{ notice.name or '' }}, {{ notice.forename or '' }}
+                        {% if notice.is_alarm_active %}<span class="alarm-badge-blink">UPDATED</span>
+                        {% elif notice.is_updated %}<span class="alarm-badge">UPDATED</span>{% endif %}
                     </h2>
-                    <p><strong>Date of Birth:</strong> {{ notice.date_of_birth or '—' }}</p>
-                    <p>
-                        <strong>Nationality:</strong>
-                        <span class="flag" data-code="{{ notice.nationality or '' }}"></span>{{ notice.nationality or
-                        '—' }}
-                    </p>
-                    {% if notice.all_nationalities %}
-                    <p><strong>All Nationalities:</strong> {{ notice.all_nationalities }}</p>
-                    {% endif %}
-                    <p class="dim">Ref: {{ notice.entity_id }}</p>
-                    <p class="timestamp">Added: {{ notice.created_at.strftime('%Y-%m-%d %H:%M') if notice.created_at
-                        else '—' }}</p>
-                    {% if notice.is_updated %}
-                    <p class="timestamp" style="color:#cc0000;">Updated: {{ notice.updated_at.strftime('%Y-%m-%d %H:%M')
-                        if notice.updated_at else '' }}</p>
-                    {% endif %}
-                    <div class="links">
-                        <a href="https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices/{{ notice.entity_id.replace('/', '-') }}"
-                            target="_blank" onclick="event.stopPropagation()">More Info ↗</a>
-                    </div>
+                    <p class="mb-1"><strong>DOB:</strong> {{ notice.date_of_birth or '—' }}</p>
+                    <p class="mb-1"><strong>Nationality:</strong> {{ notice.nationality or '—' }}</p>
                 </div>
             </div>
             {% endfor %}
         </div>
-
-        {% if total_pages > 1 %}
-        <div id="pages">
-            <a href="?page=1&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==1 %}class="off" {% endif
-                %}>&laquo;</a>
-            <a href="?page={{ page - 1 }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==1 %}class="off" {% endif
-                %}>&lsaquo;</a>
-            {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
-            <a href="?page={{ p }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" class="{% if p == page %}cur{% endif %}">{{
-                p }}</a>
-            {% endfor %}
-            <a href="?page={{ page + 1 }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==total_pages %}class="off"
-                {% endif %}>&rsaquo;</a>
-            <a href="?page={{ total_pages }}&q={{ q }}&nat={{ nat }}&sort={{ sort }}" {% if page==total_pages
-                %}class="off" {% endif %}>&raquo;</a>
-        </div>
-        {% endif %}
-
-        {% else %}
-        <div id="empty">
-            {% if q or nat %}No entries match the current filter. <a href="/">Clear filter</a>
-            {% else %}Feed is initializing. Records will appear once the fetcher completes ingestion.{% endif %}
-        </div>
-        {% endif %}
     </div>
 
-    <!-- Detail Modal -->
     <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="modal-title">—</h5>
+                    <h5 class="modal-title fw-bold" id="modal-title">Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="modal-loading">
-                        <div class="spinner-border text-danger" role="status">
-                            <span class="visually-hidden">Loading…</span>
-                        </div>
+                    <div id="modal-loading" class="text-center py-5">
+                        <div class="spinner-border text-danger"></div>
                     </div>
-
                     <div id="modal-content-inner" style="display:none">
                         <div class="row g-3">
-
-                            <!-- Left: gallery + identity -->
                             <div class="col-md-5">
                                 <div class="gallery-wrap" id="gallery-wrap">
-                                    <span class="gallery-placeholder" id="gallery-placeholder">No Photo</span>
-                                    <button class="gallery-nav gallery-prev" id="gallery-prev" onclick="galleryNav(-1)"
-                                        style="display:none">&#8249;</button>
-                                    <button class="gallery-nav gallery-next" id="gallery-next" onclick="galleryNav(+1)"
-                                        style="display:none">&#8250;</button>
-                                    <span class="gallery-counter" id="gallery-counter" style="display:none"></span>
+                                    <span class="gallery-placeholder" id="gallery-placeholder"></span>
+                                    <button class="gallery-nav gallery-prev" id="gallery-prev"
+                                        onclick="galleryNav(-1)">&#8249;</button>
+                                    <button class="gallery-nav gallery-next" id="gallery-next"
+                                        onclick="galleryNav(1)">&#8250;</button>
+                                    <span class="gallery-counter" id="gallery-counter"></span>
                                 </div>
-
                                 <div class="detail-section mt-3">
                                     <h6>Identity</h6>
                                     <div class="physical-grid">
-                                        <div class="physical-item"><label>Date of Birth</label><span id="d-dob">—</span>
-                                        </div>
-                                        <div class="physical-item"><label>Sex</label><span id="d-sex">—</span></div>
-                                        <div class="physical-item"><label>Place of Birth</label><span
-                                                id="d-pob">—</span></div>
-                                        <div class="physical-item"><label>Country of Birth</label><span
-                                                id="d-cob">—</span></div>
+                                        <div class="detail-item"><small>DOB</small><span id="d-dob"></span></div>
+                                        <div class="detail-item"><small>Sex</small><span id="d-sex"></span></div>
+                                        <div class="detail-item"><small>Place of Birth</small><span id="d-place-of-birth"></span></div>
+                                        <div class="detail-item"><small>Country of Birth</small><span id="d-country-of-birth"></span></div>
+                                        <div class="detail-item"><small>Nationality</small><span id="d-nationality"></span></div>
+                                        <div class="detail-item"><small>All Nationalities</small><div id="d-all-nationalities"></div></div>
+                                        <div class="detail-item"><small>Reference</small><span id="d-entity-id" class="mono"></span></div>
+                                        <div class="detail-item"><small>Status</small><span id="d-status"></span></div>
                                     </div>
                                 </div>
+                                <div class="detail-section">
+                                    <h6>Meta</h6>
+                                    <div class="detail-item"><small>Created</small><span id="d-created-at"></span></div>
+                                    <div class="detail-item"><small>Updated</small><span id="d-updated-at"></span></div>
+                                    <div class="detail-item"><small>Detail Fetched</small><span id="d-detail-fetched-at"></span></div>
+                                </div>
                             </div>
-
-                            <!-- Right: details -->
                             <div class="col-md-7">
                                 <div class="detail-section">
                                     <h6>Charges</h6>
-                                    <div class="charges-text" id="d-charges">—</div>
-                                    <div id="d-translation-wrap" style="display:none; margin-top:8px">
-                                        <small class="text-muted">Translation:</small>
-                                        <div class="charges-text" id="d-translation"
-                                            style="color:#666; font-size:.82rem"></div>
-                                    </div>
+                                    <div id="d-arrest-warrant" style="font-size: 0.9rem; margin-bottom:8px;"></div>
+                                    <div id="d-charges" style="font-size: 0.9rem;"></div>
+                                    <div id="d-charge-translation" class="text-muted" style="font-size:0.85rem; margin-top:8px;"></div>
                                 </div>
-
                                 <div class="detail-section">
                                     <h6>Issuing Countries</h6>
-                                    <div id="d-countries">—</div>
+                                    <div id="d-countries"></div>
                                 </div>
-
                                 <div class="detail-section">
-                                    <h6>Physical Description</h6>
+                                    <h6>Physical</h6>
                                     <div class="physical-grid">
-                                        <div class="physical-item"><label>Height</label><span id="d-height">—</span>
-                                        </div>
-                                        <div class="physical-item"><label>Weight</label><span id="d-weight">—</span>
-                                        </div>
-                                        <div class="physical-item"><label>Eye Colour</label><span id="d-eyes">—</span>
-                                        </div>
-                                        <div class="physical-item"><label>Hair</label><span id="d-hair">—</span></div>
+                                        <div class="detail-item"><small>Height</small><span id="d-height"></span></div>
+                                        <div class="detail-item"><small>Weight</small><span id="d-weight"></span></div>
+                                        <div class="detail-item"><small>Eyes</small><span id="d-eyes"></span></div>
+                                        <div class="detail-item"><small>Hair</small><span id="d-hairs"></span></div>
                                     </div>
-                                    <div id="d-marks-wrap" style="display:none; margin-top:8px">
-                                        <label style="font-size:.7rem; color:#999">Distinguishing marks</label>
-                                        <div style="font-size:.85rem; color:#444" id="d-marks"></div>
-                                    </div>
+                                    <div class="detail-item mt-2"><small>Distinguishing Marks</small><div id="d-distinguishing-marks"></div></div>
                                 </div>
-
                                 <div class="detail-section">
-                                    <h6>Languages Spoken</h6>
-                                    <div id="d-languages">—</div>
+                                    <h6>Languages</h6>
+                                    <div id="d-languages"></div>
                                 </div>
-
                                 <div class="detail-section">
-                                    <h6>Nationalities</h6>
-                                    <div id="d-nationalities">—</div>
+                                    <h6>Change History</h6>
+                                    <div id="d-change-history" class="history-list"></div>
                                 </div>
-
-                                <!-- Change History -->
-                                <div class="detail-section" id="d-changes-wrap" style="display:none">
-                                    <h6>⚠ Change History</h6>
-                                    <div id="d-changes"></div>
-                                </div>
-
-                                <div style="margin-top: 4px">
-                                    <a id="d-interpol-link" href="#" target="_blank"
-                                        class="btn btn-sm btn-outline-danger">
-                                        View on Interpol.int ↗
-                                    </a>
-                                </div>
+                                <a id="d-link" href="#" target="_blank" class="btn btn-sm btn-outline-danger w-100">View
+                                    on Interpol ↗</a>
                             </div>
                         </div>
                     </div>
@@ -608,194 +383,167 @@
         </div>
     </div>
 
-    <script id="page-state" type="application/json">{"total": {{ total }}, "alarms": {{ total_alarms }}}</script>
     <script>
-        document.querySelectorAll('.flag[data-code]').forEach(el => { el.textContent = ''; });
-
-        (function () {
-            const ps = JSON.parse(document.getElementById('page-state').textContent);
-            let knownTotal = ps.total;
-            let knownAlarms = ps.alarms;
-
-            function startSSE() {
-                const es = new EventSource('/api/stream');
-                es.onmessage = function (e) {
-                    if (e.data === 'INSERTED' || e.data === 'UPDATED' || e.data === 'SWEPT') location.reload();
-                };
-                es.onerror = function () { es.close(); setTimeout(pollFallback, 10000); };
-            }
-
-            function pollFallback() {
-                fetch('/api/status')
-                    .then(r => r.json())
-                    .then(d => {
-                        if (d.total !== knownTotal || d.alarms !== knownAlarms) location.reload();
-                        else setTimeout(pollFallback, 10000);
-                    })
-                    .catch(() => setTimeout(pollFallback, 10000));
-            }
-
-            startSSE();
-        })();
-
-        const SEX_LABELS = { M: 'Male', F: 'Female', U: 'Unknown' };
-        const EYE_CODES = { BRO: 'Brown', BLU: 'Blue', GRE: 'Green', BLA: 'Black', GRY: 'Grey', HAZ: 'Hazel', BLN: 'Blond', RED: 'Red', WHI: 'White' };
-        const HAIR_CODES = { BLA: 'Black', BRO: 'Brown', BLN: 'Blond/Strawberry', RED: 'Red', GRY: 'Grey', WHI: 'White', BAL: 'Bald' };
-        const LANG_NAMES = { ENG: 'English', TUR: 'Turkish', RUS: 'Russian', UKR: 'Ukrainian', FRA: 'French', DEU: 'German', SPA: 'Spanish', ARA: 'Arabic', CHI: 'Chinese', ITA: 'Italian', POR: 'Portuguese', POL: 'Polish', NLD: 'Dutch', SWE: 'Swedish', NOR: 'Norwegian', FIN: 'Finnish', HUN: 'Hungarian', RUM: 'Romanian', CZE: 'Czech', SLO: 'Slovak' };
-        const FIELD_LABELS = { name: 'Surname', forename: 'Forename', date_of_birth: 'Date of Birth', nationality: 'Nationality', arrest_warrant: 'Arrest Warrant', charges: 'Charges', issuing_countries: 'Issuing Countries', place_of_birth: 'Place of Birth', country_of_birth_id: 'Country of Birth', height: 'Height', weight: 'Weight', eyes_colors_id: 'Eye Colour', hairs_id: 'Hair', languages_spoken: 'Languages' };
-
-        function decodeCodes(val, table) {
-            if (!val) return '—';
-            return val.split(',').map(c => table[c.trim()] || c.trim()).join(', ');
-        }
-
         let galleryImages = [];
         let galleryIdx = 0;
 
         function galleryNav(dir) {
+            if (galleryImages.length <= 1) return;
             galleryIdx = (galleryIdx + dir + galleryImages.length) % galleryImages.length;
             renderGallery();
         }
 
         function renderGallery() {
-            document.querySelectorAll('.gallery-img').forEach(el => el.remove());
             const wrap = document.getElementById('gallery-wrap');
-            const placeholder = document.getElementById('gallery-placeholder');
             const prev = document.getElementById('gallery-prev');
             const next = document.getElementById('gallery-next');
             const counter = document.getElementById('gallery-counter');
 
+            wrap.querySelectorAll('.gallery-img').forEach(img => img.remove());
+
             if (galleryImages.length === 0) {
-                placeholder.style.display = '';
-                prev.style.display = 'none';
-                next.style.display = 'none';
-                counter.style.display = 'none';
+                prev.style.display = 'none'; next.style.display = 'none'; counter.style.display = 'none';
                 return;
             }
-            placeholder.style.display = 'none';
-            galleryImages.forEach((url, i) => {
+
+            galleryImages.forEach((entry, i) => {
                 const img = document.createElement('img');
+                const src = typeof entry === 'string' ? entry : entry.src;
+                const fallback = typeof entry === 'string' ? '' : (entry.fallback || '');
+                img.src = src;
                 img.className = 'gallery-img' + (i === galleryIdx ? ' active' : '');
-                img.src = url;
-                img.alt = 'Photo ' + (i + 1);
-                img.onerror = () => { img.style.display = 'none'; };
-                wrap.insertBefore(img, prev);
+                // Resim bozuksa gizle, bembeyaz kalsın
+                img.onerror = () => {
+                    if (fallback && img.src !== new URL(fallback, window.location.origin).href) {
+                        img.src = fallback;
+                        return;
+                    }
+                    img.style.display = 'none';
+                };
+                wrap.appendChild(img);
             });
+
             if (galleryImages.length > 1) {
-                prev.style.display = '';
-                next.style.display = '';
-                counter.style.display = '';
-                counter.textContent = (galleryIdx + 1) + ' / ' + galleryImages.length;
+                prev.style.display = 'block'; next.style.display = 'block'; counter.style.display = 'block';
+                counter.textContent = `${galleryIdx + 1} / ${galleryImages.length}`;
             } else {
-                prev.style.display = 'none';
-                next.style.display = 'none';
-                counter.style.display = 'none';
+                prev.style.display = 'none'; next.style.display = 'none'; counter.style.display = 'none';
             }
+        }
+
+        function setText(id, value, fallback = '—') {
+            document.getElementById(id).textContent = value || fallback;
+        }
+
+        function renderBadges(id, value) {
+            const el = document.getElementById(id);
+            const parts = Array.isArray(value)
+                ? value
+                : (value || '').split(',').map(v => v.trim()).filter(Boolean);
+
+            if (parts.length === 0) {
+                el.textContent = '—';
+                return;
+            }
+
+            el.innerHTML = parts.map(part => `<span class="badge-tag">${part}</span>`).join('');
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '—';
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return value;
+            return parsed.toLocaleString();
+        }
+
+        function renderChangeHistory(changes) {
+            const el = document.getElementById('d-change-history');
+            if (!Array.isArray(changes) || changes.length === 0) {
+                el.innerHTML = '<div class="text-muted">No change history.</div>';
+                return;
+            }
+
+            el.innerHTML = changes.map(change => `
+                <div class="history-item">
+                    <small>${formatDateTime(change.changed_at)}</small>
+                    <strong>${change.field_name || 'field'}</strong>
+                    <div><span class="text-muted">Old:</span> ${change.old_value || '—'}</div>
+                    <div><span class="text-muted">New:</span> ${change.new_value || '—'}</div>
+                </div>
+            `).join('');
         }
 
         async function openDetail(entityId) {
-            document.getElementById('modal-title').textContent = '…';
-            document.getElementById('modal-loading').style.display = 'flex';
-            document.getElementById('modal-content-inner').style.display = 'none';
-
             const modal = new bootstrap.Modal(document.getElementById('detailModal'));
             modal.show();
 
-            const urlId = entityId.replace('/', '-');
-            let data;
+            document.getElementById('modal-loading').style.display = 'block';
+            document.getElementById('modal-content-inner').style.display = 'none';
+
             try {
-                const res = await fetch('/api/notice/' + urlId);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                data = await res.json();
+                const res = await fetch('/api/notice/' + entityId.replace('/', '-'));
+                const data = await res.json();
+
+                document.getElementById('modal-title').textContent = [data.forename || '', data.name || ''].join(' ').trim() || entityId;
+
+                // Modal her durumda karttaki güvenli foto yolunu da içersin.
+                const fallbackPhoto = '/photos/' + entityId;
+                const apiImages = Array.isArray(data.image_urls) ? data.image_urls : [];
+                galleryImages = [];
+
+                apiImages.forEach(url => {
+                    if (url) {
+                        galleryImages.push({ src: url, fallback: fallbackPhoto });
+                    }
+                });
+
+                if (galleryImages.length === 0 && data.photo_url) {
+                    galleryImages.push({ src: data.photo_url, fallback: fallbackPhoto });
+                }
+
+                if (galleryImages.length === 0) {
+                    galleryImages.push({ src: fallbackPhoto });
+                }
+
+                galleryIdx = 0;
+                renderGallery();
+
+                document.getElementById('d-dob').textContent = data.date_of_birth || '—';
+                document.getElementById('d-sex').textContent = data.sex_id || '—';
+                setText('d-charges', data.charges, 'No information available.');
+                document.getElementById('d-height').textContent = data.height ? data.height + 'm' : '—';
+                document.getElementById('d-eyes').textContent = data.eyes_colors_id || '—';
+                setText('d-place-of-birth', data.place_of_birth);
+                setText('d-country-of-birth', data.country_of_birth_id);
+                setText('d-nationality', data.nationality);
+                renderBadges('d-all-nationalities', data.all_nationalities || data.nationality);
+                setText('d-entity-id', data.entity_id);
+                setText('d-status', data.is_updated ? 'Updated' : 'Normal');
+
+                setText('d-created-at', formatDateTime(data.created_at));
+                setText('d-updated-at', formatDateTime(data.updated_at));
+                setText('d-detail-fetched-at', formatDateTime(data.detail_fetched_at));
+
+                setText('d-arrest-warrant', data.arrest_warrant ? `Arrest warrant: ${data.arrest_warrant}` : '');
+                setText('d-charge-translation', data.charge_translation);
+                renderBadges('d-countries', data.issuing_countries);
+                setText('d-weight', data.weight ? `${data.weight} kg` : '');
+                setText('d-hairs', data.hairs_id);
+                setText('d-distinguishing-marks', data.distinguishing_marks);
+                renderBadges('d-languages', data.languages_spoken);
+                renderChangeHistory(data.change_history);
+
+                document.getElementById('d-link').href = 'https://www.interpol.int/en/How-we-work/Notices/Red-Notices/View-Red-Notices/' + entityId.replace('/', '-');
+
+                document.getElementById('modal-loading').style.display = 'none';
+                document.getElementById('modal-content-inner').style.display = 'block';
             } catch (e) {
-                document.getElementById('modal-loading').innerHTML = '<div class="text-danger">Failed to load details: ' + e.message + '</div>';
-                return;
+                document.getElementById('modal-loading').textContent = ''; // Hata yazısını da sildik
             }
-
-            const parts = [data.forename, data.name].filter(Boolean);
-            document.getElementById('modal-title').textContent = parts.length ? parts.join(' ') : entityId;
-
-            galleryImages = data.image_urls || [];
-            if (galleryImages.length === 0 && data.photo_url) galleryImages = [data.photo_url];
-            galleryIdx = 0;
-            renderGallery();
-
-            setText('d-dob', data.date_of_birth || '—');
-            setText('d-sex', SEX_LABELS[data.sex_id] || data.sex_id || '—');
-            setText('d-pob', data.place_of_birth || '—');
-            setText('d-cob', data.country_of_birth_id || '—');
-
-            setText('d-charges', data.charges || 'No information available');
-            if (data.charge_translation) {
-                setText('d-translation', data.charge_translation);
-                document.getElementById('d-translation-wrap').style.display = '';
-            } else {
-                document.getElementById('d-translation-wrap').style.display = 'none';
-            }
-
-            const countriesEl = document.getElementById('d-countries');
-            if (data.issuing_countries) {
-                countriesEl.innerHTML = data.issuing_countries.split(',').map(c => '<span class="badge-tag">' + c.trim() + '</span>').join('');
-            } else { countriesEl.textContent = '—'; }
-
-            setText('d-height', data.height ? data.height + ' m' : '—');
-            setText('d-weight', data.weight ? data.weight + ' kg' : '—');
-            setText('d-eyes', decodeCodes(data.eyes_colors_id, EYE_CODES));
-            setText('d-hair', decodeCodes(data.hairs_id, HAIR_CODES));
-            if (data.distinguishing_marks) {
-                setText('d-marks', data.distinguishing_marks);
-                document.getElementById('d-marks-wrap').style.display = '';
-            } else { document.getElementById('d-marks-wrap').style.display = 'none'; }
-
-            const langsEl = document.getElementById('d-languages');
-            if (data.languages_spoken) {
-                langsEl.innerHTML = data.languages_spoken.split(',').map(l => '<span class="badge-tag">' + (LANG_NAMES[l.trim()] || l.trim()) + '</span>').join('');
-            } else { langsEl.textContent = '—'; }
-
-            const natsEl = document.getElementById('d-nationalities');
-            const nats = data.all_nationalities ? data.all_nationalities.split(',') : (data.nationality ? [data.nationality] : []);
-            if (nats.length) {
-                natsEl.innerHTML = nats.map(n => '<span class="badge-tag">' + n.trim() + '</span>').join('');
-            } else { natsEl.textContent = '—'; }
-
-            // Change history
-            const changesWrap = document.getElementById('d-changes-wrap');
-            const changesEl = document.getElementById('d-changes');
-            const history = data.change_history || [];
-            if (history.length > 0) {
-                changesWrap.style.display = '';
-                changesEl.innerHTML = history.map(c => {
-                    const label = FIELD_LABELS[c.field_name] || c.field_name;
-                    const oldVal = c.old_value || '—';
-                    const newVal = c.new_value || '—';
-                    const dt = c.changed_at ? new Date(c.changed_at).toLocaleString() : '';
-                    return '<div class="change-row">' +
-                        '<span class="change-field">' + label + '</span>' +
-                        '<span class="change-old">' + oldVal + '</span>' +
-                        '<span class="change-arrow">→</span>' +
-                        '<span class="change-new">' + newVal + '</span>' +
-                        '<span class="change-time">' + dt + '</span>' +
-                        '</div>';
-                }).join('');
-            } else {
-                changesWrap.style.display = 'none';
-            }
-
-            document.getElementById('d-interpol-link').href =
-                'https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices/' + urlId;
-
-            document.getElementById('modal-loading').style.display = 'none';
-            document.getElementById('modal-content-inner').style.display = '';
         }
 
-        function setText(id, val) { document.getElementById(id).textContent = val; }
-
-        document.querySelectorAll('.card[data-entity-id]').forEach(card => {
-            card.addEventListener('click', event => {
-                if (event.target.closest('a')) return;
-                const entityId = card.dataset.entityId;
-                if (entityId) openDetail(entityId);
-            });
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', () => openDetail(card.dataset.entityId));
         });
     </script>
 </body>

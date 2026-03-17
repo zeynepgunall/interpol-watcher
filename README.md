@@ -11,7 +11,6 @@ Interpol tarafından yayınlanan kırmızı bülten (Red Notice) verilerini peri
 - [Hızlı Kurulum (Docker ile)](#hizli-kurulum-docker-ile)
 - [Çevresel Değişkenler (.env)](#çevresel-değişkenler-env)
 - [Web Arayüzü ve Sistem Davranışları](#web-arayüzü-ve-sistem-davranişlari)
-- [Fotoğrafları Yerel Olarak İndirme](#fotoğraflari-yerel-olarak-i̇ndirme)
 - [Birim Testleri (Pytest)](#birim-testleri-pytest)
 - [Geliştirici Notları ve İpuçları](#geliştirici-notlari-ve-i̇puçlari)
 
@@ -128,29 +127,6 @@ Projeyi derlemeden (rebuild yapmadan) ayarları değiştirebileceğiniz çevrele
 | `REQUEST_DELAY_SECONDS` | `3.0` | IP engeli almamak (403 ban) için API call'ları arasında ne kadar yavaşlanacağı |
 | `VERY_HIGH_NATIONALITIES_1YR` | `IN,PK` | Çok fazla suç barındırdığı için çok dar bir parametrede incelenecek ülkeler |
 | `ENABLE_PASS_AGE_0_9` | `true` | Çok geniş yaş grubu interpollerinde bebek/çocuk bandını inceler |
-
----
-
-## Fotoğrafları Yerel Olarak İndirme
-
-Şüphelilere ait fotoğrafların internet erişimleri (Interpol API kısıtlamaları veya expire olması) kapanabilir diye ayrı olarak fotoğrafları veritabanından bulup local diske indirecek özel bir helper (yardımcı script) vardır:
-
-**Kurulumu ve Kullanımı:**
-Kendi ana işletim sisteminizde (bilgisayarınızda) bağımlılıkları yükleyin:
-```bash
-pip install requests psycopg2-binary
-```
-Scripti çalıştırın:
-```bash
-python download_photos.py
-```
-- DB'ye dışarıdan (`localhost:5432` üzerinden) bağlanarak photo URL bulur.
-- Random bekleme (delay) ekleyerek Interpol IP-Ban korumasından kurtulur.
-- Inen .jpg dosyalarını `./photos/` içerisine kaydeder.
-- Bu işlem bittikten sonra inen dosyaları Web Container'a atabilirsiniz:
-  ```bash
-  docker cp photos/. interpol_web:/data/photos/
-  ```
 
 ---
 

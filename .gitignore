@@ -51,8 +51,7 @@ Thumbs.db
 photos/
 data/
 
-# One-off helper scripts (contain cookies / local paths)
-download_photos.py
+# One-off local helpers / recovered artifacts
 browser_sync.js
 generate_js.py
 fetch_images_json.py

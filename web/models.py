@@ -57,10 +57,11 @@ class Notice(Base):
     image_urls           = Column(Text,        nullable=True)
     detail_fetched_at    = Column(DateTime,    nullable=True)
 
+    # İlişki: Bu notice'a ait tüm değişiklik kayıtları
     changes = relationship(
         "NoticeChange",
         back_populates="notice",
-        order_by="NoticeChange.changed_at.desc()",
+        order_by="NoticeChange.changed_at.desc()", # Değişiklikleri en yeniden eskiye sıralar
         lazy="dynamic",
     )
 
@@ -86,7 +87,7 @@ class NoticeChange(Base):
 
     notice = relationship("Notice", back_populates="changes")
 
-
+# İndeksleri kontrol eder ve oluşturur.
 def _ensure_indexes(engine) -> None:
     statements = (
         "CREATE INDEX IF NOT EXISTS ix_notices_is_updated_created_at ON notices (is_updated, created_at)",
@@ -102,7 +103,7 @@ def _ensure_indexes(engine) -> None:
         for statement in statements:
             conn.execute(text(statement))
 
-
+# Veritabanı oturum  oluşturur.
 def create_session_factory(config: WebConfig) -> sessionmaker:
     engine = create_engine(config.database_url, echo=False, future=True)
     Base.metadata.create_all(engine)

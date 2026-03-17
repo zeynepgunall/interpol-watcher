@@ -181,6 +181,7 @@ def create_app() -> Flask:
                 "date_of_birth":        notice.date_of_birth,
                 "nationality":          notice.nationality,
                 "all_nationalities":    notice.all_nationalities,
+                "arrest_warrant":       notice.arrest_warrant,
                 "sex_id":               notice.sex_id,
                 "place_of_birth":       notice.place_of_birth,
                 "country_of_birth_id":  notice.country_of_birth_id,
@@ -202,6 +203,7 @@ def create_app() -> Flask:
                 # Meta
                 "is_updated":           notice.is_updated,
                 "created_at":           notice.created_at.isoformat() if notice.created_at else None,
+                "updated_at":           notice.updated_at.isoformat() if notice.updated_at else None,
                 "detail_fetched_at":    notice.detail_fetched_at.isoformat() if notice.detail_fetched_at else None,
                 # Değişiklik geçmişi
                 "change_history":       change_history,

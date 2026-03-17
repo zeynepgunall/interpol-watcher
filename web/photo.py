@@ -46,7 +46,6 @@ def download_photo(entity_id: str, photo_url: str) -> bool:
     """
     Fotoğrafı Interpol'den indirip disk'e kaydeder.
     Zaten varsa tekrar indirmez. Başarılıysa True döner.
-    Not: Interpol çoğu durumda 403 döner; toplu indirme için download_photos.py kullanılır.
     """
     if not photo_url:
         return False
