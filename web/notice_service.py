@@ -44,26 +44,32 @@ class UpsertResult:
         return self.outcome is UpsertOutcome.UPDATED
 
 
-# Değişiklik takibi yapılan alanlar
-_TRACKED_FIELDS = (
+# Queue/payload üzerinden güncellenebilen alanlar.
+_UPSERT_FIELDS = (
     "name",
     "forename",
     "date_of_birth",
     "nationality",
+    "all_nationalities",
     "arrest_warrant",
+    "photo_url",
     "charges",
+    "charge_translation",
     "issuing_countries",
     "place_of_birth",
     "country_of_birth_id",
+    "sex_id",
     "height",
     "weight",
     "eyes_colors_id",
     "hairs_id",
     "languages_spoken",
+    "distinguishing_marks",
+    "image_urls",
 )
 
-# Toplu güncelleme yapılacak alanlar
-_UPDATE_FIELDS = (*_TRACKED_FIELDS, "all_nationalities")
+# Payload içindeki bu alanlardan herhangi biri değişirse alarm üret.
+_TRACKED_FIELDS = _UPSERT_FIELDS
 
 # İnsan okunabilir alan adları (modal gösterimi için)
 _FIELD_LABELS = {
@@ -71,16 +77,22 @@ _FIELD_LABELS = {
     "forename":           "Adı",
     "date_of_birth":      "Doğum Tarihi",
     "nationality":        "Uyruk",
+    "all_nationalities":  "Tüm Uyruklar",
     "arrest_warrant":     "Tutuklama Müzekkeresi",
+    "photo_url":          "Kapak Fotoğrafı",
     "charges":            "Suç",
+    "charge_translation": "Suç Çevirisi",
     "issuing_countries":  "Talep Eden Ülke",
     "place_of_birth":     "Doğum Yeri",
     "country_of_birth_id":"Doğum Ülkesi",
+    "sex_id":             "Cinsiyet",
     "height":             "Boy",
     "weight":             "Kilo",
     "eyes_colors_id":     "Göz Rengi",
     "hairs_id":           "Saç Rengi",
     "languages_spoken":   "Konuşulan Diller",
+    "distinguishing_marks":"Ayırt Edici İzler",
+    "image_urls":         "Galeri Fotoğrafları",
 }
 
 
@@ -164,17 +176,11 @@ class NoticeService:
         existing = session.query(Notice).filter(Notice.entity_id == entity_id).one_or_none()
 
         if existing is None:
-            notice = Notice(
-                entity_id=entity_id,
-                name=payload.get("name"),
-                forename=payload.get("forename"),
-                date_of_birth=payload.get("date_of_birth"),
-                nationality=payload.get("nationality"),
-                all_nationalities=payload.get("all_nationalities"),
-                arrest_warrant=payload.get("arrest_warrant"),
-                photo_url=payload.get("photo_url"),
-                is_updated=False,
-            )
+            notice_data = {"entity_id": entity_id, "is_updated": False}
+            for field in _UPSERT_FIELDS:
+                if field in payload:
+                    notice_data[field] = self._coerce_payload_value(field, payload.get(field))
+            notice = Notice(**notice_data)
             session.add(notice)
             logger.info("Yeni kayıt: %s", entity_id)
             return UpsertResult(outcome=UpsertOutcome.INSERTED, entity_id=entity_id)
@@ -194,24 +200,22 @@ class NoticeService:
         # Değişiklikleri notice_changes tablosuna kaydet
         for field in changed:
             old_val = getattr(existing, field)
-            new_val = payload.get(field)
+            new_val = self._coerce_payload_value(field, payload.get(field))
             change = NoticeChange(
                 entity_id=entity_id,
                 field_name=field,
-                old_value=str(old_val) if old_val is not None else None,
-                new_value=str(new_val) if new_val is not None else None,
+                old_value=self._stringify_change_value(old_val),
+                new_value=self._stringify_change_value(new_val),
                 changed_at=utcnow_naive(),
             )
             session.add(change)
 
         # Alanları güncelle
-        for field in _UPDATE_FIELDS:
-            setattr(existing, field, payload.get(field))
+        for field in _UPSERT_FIELDS:
+            if field in payload:
+                setattr(existing, field, self._coerce_payload_value(field, payload.get(field)))
         existing.is_updated = True
         existing.updated_at = utcnow_naive()
-
-        if payload.get("photo_url"):
-            existing.photo_url = payload["photo_url"]
 
         logger.info("Güncelleme (alarm) %s | değişen: %s", entity_id, changed)
         return UpsertResult(outcome=UpsertOutcome.UPDATED, entity_id=entity_id)
@@ -373,10 +377,36 @@ class NoticeService:
     def _detect_changes(existing: Notice, payload: dict) -> list[str]:
         changed = []
         for field in _TRACKED_FIELDS:
+            if field not in payload:
+                continue
             old = getattr(existing, field)
-            new = payload.get(field)
-            old_norm = old.strip() if isinstance(old, str) else old
-            new_norm = new.strip() if isinstance(new, str) else new
+            new = NoticeService._coerce_payload_value(field, payload.get(field))
+            old_norm = NoticeService._normalize_change_value(old)
+            new_norm = NoticeService._normalize_change_value(new)
             if old_norm != new_norm:
                 changed.append(field)
         return changed
+
+    @staticmethod
+    def _coerce_payload_value(field: str, value):
+        if field == "image_urls" and value is not None and not isinstance(value, str):
+            return json.dumps(value)
+        return value
+
+    @staticmethod
+    def _normalize_change_value(value):
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, (list, tuple, dict)):
+            return json.dumps(value, sort_keys=True, ensure_ascii=False)
+        return value
+
+    @staticmethod
+    def _stringify_change_value(value) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        if isinstance(value, (list, tuple, dict)):
+            return json.dumps(value, ensure_ascii=False)
+        return str(value)

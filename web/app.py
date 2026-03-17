@@ -30,6 +30,7 @@ def create_app() -> Flask:
     config = WebConfig.from_env()
     session_factory = create_session_factory(config)
     sse_manager = SSEManager()
+    #Minio bağlantısı
     minio = MinioStorage(
         endpoint=config.minio_endpoint,
         access_key=config.minio_access_key,
@@ -65,6 +66,7 @@ def create_app() -> Flask:
                 )
             total = query.count()
 
+            # Sıralama mantığı
             if sort == "oldest":
                 query = query.order_by(Notice.is_updated.desc(), Notice.created_at.asc())
             elif sort == "name_asc":
@@ -73,7 +75,7 @@ def create_app() -> Flask:
                 query = query.order_by(Notice.is_updated.desc(), nullslast(Notice.name.desc()), nullslast(Notice.forename.desc()))
             else:
                 query = query.order_by(Notice.is_updated.desc(), Notice.created_at.desc())
-
+            # Sayfalama
             notices = (
                 query
                 .offset((page - 1) * _PER_PAGE)
@@ -146,8 +148,6 @@ def create_app() -> Flask:
     def api_notice_detail(entity_id: str):
         """
         Tek bir notice'ın tüm detay bilgilerini JSON olarak döner.
-        Frontend modal açılırken bu endpoint'i çağırır.
-        entity_id URL'de "2025-102375" formatında gelir, DB'de "2025/102375" olarak saklanır.
         """
         normalized = entity_id.replace("-", "/", 1) if "/" not in entity_id else entity_id
 
@@ -181,7 +181,6 @@ def create_app() -> Flask:
                 "date_of_birth":        notice.date_of_birth,
                 "nationality":          notice.nationality,
                 "all_nationalities":    notice.all_nationalities,
-                "arrest_warrant":       notice.arrest_warrant,
                 "sex_id":               notice.sex_id,
                 "place_of_birth":       notice.place_of_birth,
                 "country_of_birth_id":  notice.country_of_birth_id,
@@ -203,7 +202,6 @@ def create_app() -> Flask:
                 # Meta
                 "is_updated":           notice.is_updated,
                 "created_at":           notice.created_at.isoformat() if notice.created_at else None,
-                "updated_at":           notice.updated_at.isoformat() if notice.updated_at else None,
                 "detail_fetched_at":    notice.detail_fetched_at.isoformat() if notice.detail_fetched_at else None,
                 # Değişiklik geçmişi
                 "change_history":       change_history,
