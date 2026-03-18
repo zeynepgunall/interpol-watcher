@@ -45,6 +45,7 @@
         .card.alarm-active {
             border: 2px solid #ff4d4d;
             background-color: #fff8f8;
+            box-shadow: 0 0 0 3px rgba(255, 77, 77, 0.16);
         }
 
         /* Ana sayfa resimleri: Yoksa beyaz kalsın */
@@ -386,6 +387,7 @@
     <script>
         let galleryImages = [];
         let galleryIdx = 0;
+        let lastStatusSnapshot = '{{ total }}:{{ total_alarms }}';
 
         function galleryNav(dir) {
             if (galleryImages.length <= 1) return;
@@ -545,6 +547,47 @@
         document.querySelectorAll('.card').forEach(card => {
             card.addEventListener('click', () => openDetail(card.dataset.entityId));
         });
+
+        function reloadOnChange() {
+            window.location.reload();
+        }
+
+        function startStatusPolling() {
+            setInterval(async () => {
+                try {
+                    const res = await fetch('/api/status', { cache: 'no-store' });
+                    const data = await res.json();
+                    const snapshot = `${data.total}:${data.alarms}`;
+                    if (snapshot !== lastStatusSnapshot) {
+                        reloadOnChange();
+                    }
+                } catch (e) {
+                    // Polling sessizce devam eder.
+                }
+            }, 10000);
+        }
+
+        function initLiveRefresh() {
+            startStatusPolling();
+
+            if (typeof EventSource !== 'undefined') {
+                try {
+                    const source = new EventSource('/api/stream');
+                    source.onmessage = (event) => {
+                        if (!event.data || event.data === 'connected') return;
+                        reloadOnChange();
+                    };
+                    source.onerror = () => {
+                        source.close();
+                    };
+                    return;
+                } catch (e) {
+                    // SSE açılamazsa polling'e düş.
+                }
+            }
+        }
+
+        initLiveRefresh();
     </script>
 </body>
 

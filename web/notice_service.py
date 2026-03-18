@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 _WARMUP_URLS = (
     "https://www.interpol.int/How-we-work/Notices/Red-Notices/View-Red-Notices",
-    "https://www.interpol.int/",
 )
 _DETAIL_RETRY_SLEEPS = (3.0, 7.0, 15.0)
 
@@ -70,31 +69,6 @@ _UPSERT_FIELDS = (
 
 # Payload içindeki bu alanlardan herhangi biri değişirse alarm üret.
 _TRACKED_FIELDS = _UPSERT_FIELDS
-
-# İnsan okunabilir alan adları (modal gösterimi için)
-_FIELD_LABELS = {
-    "name":               "Soyadı",
-    "forename":           "Adı",
-    "date_of_birth":      "Doğum Tarihi",
-    "nationality":        "Uyruk",
-    "all_nationalities":  "Tüm Uyruklar",
-    "arrest_warrant":     "Tutuklama Müzekkeresi",
-    "photo_url":          "Kapak Fotoğrafı",
-    "charges":            "Suç",
-    "charge_translation": "Suç Çevirisi",
-    "issuing_countries":  "Talep Eden Ülke",
-    "place_of_birth":     "Doğum Yeri",
-    "country_of_birth_id":"Doğum Ülkesi",
-    "sex_id":             "Cinsiyet",
-    "height":             "Boy",
-    "weight":             "Kilo",
-    "eyes_colors_id":     "Göz Rengi",
-    "hairs_id":           "Saç Rengi",
-    "languages_spoken":   "Konuşulan Diller",
-    "distinguishing_marks":"Ayırt Edici İzler",
-    "image_urls":         "Galeri Fotoğrafları",
-}
-
 
 class NoticeService:
     def __init__(

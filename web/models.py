@@ -25,7 +25,7 @@ Base = declarative_base()
 
 ALARM_WINDOW_SECONDS = 60
 
-
+# Red Notice kayıtları için tablo.
 class Notice(Base):
     __tablename__ = "notices"
 
@@ -72,7 +72,7 @@ class Notice(Base):
         elapsed = utcnow_naive() - self.updated_at
         return elapsed.total_seconds() <= ALARM_WINDOW_SECONDS
 
-
+# Değişiklik kayıtları için tablo.
 class NoticeChange(Base):
     """Bir notice kaydında tespit edilen her alan değişikliği buraya kaydedilir."""
 
