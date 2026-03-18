@@ -70,6 +70,8 @@ _UPSERT_FIELDS = (
 # Payload içindeki bu alanlardan herhangi biri değişirse alarm üret.
 _TRACKED_FIELDS = _UPSERT_FIELDS
 
+# NoticeService sınıfı  
+# Ayrıca MinIO'ya fotoğraf yükleme ve URL üretme mantığını da içeren sınıf.
 class NoticeService:
     def __init__(
         self,
